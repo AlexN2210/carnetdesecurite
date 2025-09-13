@@ -18,6 +18,7 @@ export const PWADownloadButton: React.FC = () => {
   useEffect(() => {
     // Vérifier si on est sur mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
     
     // Vérifier si l'app est déjà installée
     if (window.matchMedia('(display-mode: standalone)').matches) {
@@ -25,7 +26,12 @@ export const PWADownloadButton: React.FC = () => {
       return;
     }
 
-    // Écouter l'événement beforeinstallprompt
+    // Sur Android, ne pas afficher de bouton - l'installation est automatique
+    if (isAndroid) {
+      return;
+    }
+
+    // Écouter l'événement beforeinstallprompt (seulement sur desktop)
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -79,34 +85,28 @@ Ou utilisez le menu de votre navigateur pour installer l'application.`);
     }
   };
 
-  // Debug : afficher toujours le bouton pour tester
-  console.log('PWA Button Debug:', { isInstalled, deferredPrompt: !!deferredPrompt });
-
   // Ne pas afficher si déjà installée
   if (isInstalled) {
     return null;
   }
 
   return (
-    <div className="bg-red-500 p-2 text-white text-xs">
-      TEST PWA BUTTON
-      <button
-        onClick={handleInstallClick}
-        disabled={isInstalling}
-        className="ml-2 flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors shadow-lg text-sm font-medium"
-      >
-        {isInstalling ? (
-          <>
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-            <span>Installation...</span>
-          </>
-        ) : (
-          <>
-            <Download className="h-4 w-4" />
-            <span>Installer l'app</span>
-          </>
-        )}
-      </button>
-    </div>
+    <button
+      onClick={handleInstallClick}
+      disabled={isInstalling}
+      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors shadow-lg text-sm font-medium"
+    >
+      {isInstalling ? (
+        <>
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+          <span>Installation...</span>
+        </>
+      ) : (
+        <>
+          <Download className="h-4 w-4" />
+          <span>Installer l'app</span>
+        </>
+      )}
+    </button>
   );
 };
