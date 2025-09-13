@@ -44,10 +44,11 @@ export const PWADownloadButton: React.FC = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      // Utiliser le prompt natif si disponible
-      setIsInstalling(true);
-      try {
+    setIsInstalling(true);
+    
+    try {
+      if (deferredPrompt) {
+        // Utiliser le prompt natif si disponible
         await deferredPrompt.prompt();
         const choiceResult = await deferredPrompt.userChoice;
         
@@ -57,21 +58,83 @@ export const PWADownloadButton: React.FC = () => {
         } else {
           console.log('Installation PWA refusée');
         }
-      } catch (error) {
-        console.error('Erreur lors de l\'installation PWA:', error);
-      } finally {
-        setIsInstalling(false);
-        setDeferredPrompt(null);
-      }
-    } else {
-      // Fallback : afficher les instructions d'installation
-      alert(`Pour installer cette application :
-      
-Chrome/Edge : Cliquez sur l'icône d'installation dans la barre d'adresse
-Firefox : Menu > Installer cette application
-Safari : Menu Partager > Sur l'écran d'accueil
+      } else {
+        // FORCER L'INSTALLATION PWA - MÉTHODES MULTIPLES
+        console.log('🚀 TENTATIVE D\'INSTALLATION PWA FORCÉE...');
+        
+        // Méthode 1: Vérifier le manifest
+        const manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
+        if (manifestLink) {
+          console.log('✅ Manifest trouvé:', manifestLink.href);
+        } else {
+          console.log('❌ Manifest non trouvé');
+        }
+        
+        // Méthode 2: Vérifier le service worker
+        if ('serviceWorker' in navigator) {
+          console.log('✅ Service Worker supporté');
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            console.log('Service Workers actifs:', registrations.length);
+          });
+        } else {
+          console.log('❌ Service Worker non supporté');
+        }
+        
+        // Méthode 3: Essayer de déclencher l'événement manuellement
+        console.log('🔄 Tentative de déclenchement manuel...');
+        
+        // Méthode 4: Vérifier les critères PWA
+        const isHTTPS = location.protocol === 'https:' || location.hostname === 'localhost';
+        const hasManifest = !!manifestLink;
+        const hasServiceWorker = 'serviceWorker' in navigator;
+        
+        console.log('Critères PWA:', {
+          HTTPS: isHTTPS,
+          Manifest: hasManifest,
+          ServiceWorker: hasServiceWorker
+        });
+        
+        // Méthode 5: Instructions détaillées avec diagnostic
+        const diagnostic = `
+🔍 DIAGNOSTIC PWA :
+- HTTPS: ${isHTTPS ? '✅' : '❌'}
+- Manifest: ${hasManifest ? '✅' : '❌'}
+- Service Worker: ${hasServiceWorker ? '✅' : '❌'}
+- Prompt disponible: ${deferredPrompt ? '✅' : '❌'}
+        `;
+        
+        const instructions = `
+🚀 INSTALLATION PWA - Carnet de Sécurité
 
-Ou utilisez le menu de votre navigateur pour installer l'application.`);
+${diagnostic}
+
+📱 SUR ANDROID (Chrome) :
+1. Ouvrez le menu Chrome (⋮) en haut à droite
+2. Sélectionnez "Installer l'application" ou "Ajouter à l'écran d'accueil"
+3. Ou cherchez l'icône d'installation (⬇️) dans la barre d'adresse
+
+💻 SUR DESKTOP (Chrome/Edge) :
+1. Cherchez l'icône d'installation (⬇️) dans la barre d'adresse
+2. Ou menu Chrome (⋮) > "Installer l'application"
+3. Ou Ctrl+Shift+I > Application > Manifest > Install
+
+🍎 SUR iOS (Safari) :
+1. Appuyez sur le bouton de partage (□↑) en bas
+2. Sélectionnez "Sur l'écran d'accueil"
+
+⚠️ Si aucune option n'apparaît :
+- Rechargez la page (F5)
+- Attendez 10 secondes et réessayez
+- Vérifiez que vous êtes en HTTPS
+        `;
+        
+        alert(instructions);
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'installation PWA:', error);
+      alert('Erreur lors de l\'installation. Vérifiez que votre navigateur supporte les PWA.');
+    } finally {
+      setIsInstalling(false);
     }
   };
 
