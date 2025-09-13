@@ -43,8 +43,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onCancel }) => 
         if (error) {
           setError('Erreur lors de l\'inscription. Vérifiez votre email.');
         } else {
-          setError('Vérifiez votre email pour confirmer votre compte');
-          setIsLogin(true);
+          onSuccess();
         }
       }
     } catch (error) {
