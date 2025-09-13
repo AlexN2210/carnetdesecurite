@@ -15,6 +15,7 @@ export const PWADownloadButton: React.FC = () => {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
 
+
   useEffect(() => {
     // Vérifier si on est sur mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -26,15 +27,15 @@ export const PWADownloadButton: React.FC = () => {
       return;
     }
 
-    // Sur Android, ne pas afficher de bouton - l'installation est automatique
-    if (isAndroid) {
-      return;
-    }
-
-    // Écouter l'événement beforeinstallprompt (seulement sur desktop)
+    // Écouter l'événement beforeinstallprompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      
+      // LANCER L'INSTALLATION AUTOMATIQUEMENT
+      setTimeout(() => {
+        handleInstallClick();
+      }, 1000); // Attendre 1 seconde puis lancer l'installation
     };
 
     // Écouter l'événement appinstalled
@@ -85,28 +86,6 @@ Ou utilisez le menu de votre navigateur pour installer l'application.`);
     }
   };
 
-  // Ne pas afficher si déjà installée
-  if (isInstalled) {
-    return null;
-  }
-
-  return (
-    <button
-      onClick={handleInstallClick}
-      disabled={isInstalling}
-      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors shadow-lg text-sm font-medium"
-    >
-      {isInstalling ? (
-        <>
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-          <span>Installation...</span>
-        </>
-      ) : (
-        <>
-          <Download className="h-4 w-4" />
-          <span>Installer l'app</span>
-        </>
-      )}
-    </button>
-  );
+  // Ne rien afficher - l'installation est automatique
+  return null;
 };

@@ -5,7 +5,6 @@ import { SiteCard } from './components/SiteCard';
 import { SiteForm } from './components/SiteForm';
 import { AuthModal } from './components/AuthModal';
 import { PWADownloadButton } from './components/PWADownloadButton';
-import { AndroidInstallPrompt } from './components/AndroidInstallPrompt';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Site, AppState } from './types';
 import { loadSites, saveSites } from './utils/supabaseStorage';
@@ -265,7 +264,6 @@ function App() {
       )}
 
       <PWADownloadButton />
-      <AndroidInstallPrompt />
     </div>
   );
 }
