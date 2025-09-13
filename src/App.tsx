@@ -5,6 +5,7 @@ import { SiteCard } from './components/SiteCard';
 import { SiteForm } from './components/SiteForm';
 import { AuthModal } from './components/AuthModal';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { LoadingScreen } from './components/LoadingScreen';
 import { Site, AppState } from './types';
 import { loadSites, saveSites } from './utils/supabaseStorage';
 import { generateId } from './utils/crypto';
@@ -22,6 +23,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSites, setIsLoadingSites] = useState(false);
 
   useEffect(() => {
     // Écouter les changements d'état d'authentification
@@ -41,11 +43,16 @@ function App() {
     // Charger les sites quand l'utilisateur est connecté
     if (user) {
       const loadData = async () => {
-        const sites = await loadSites();
-        setState(prev => ({ 
-          ...prev, 
-          sites
-        }));
+        setIsLoadingSites(true);
+        try {
+          const sites = await loadSites();
+          setState(prev => ({ 
+            ...prev, 
+            sites
+          }));
+        } finally {
+          setIsLoadingSites(false);
+        }
       };
       loadData();
     }
@@ -136,16 +143,14 @@ function App() {
     site.address.toLowerCase().includes(state.searchQuery.toLowerCase())
   );
 
-  // Écran de chargement
+  // Écran de chargement initial
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-400">Chargement...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Initialisation de votre carnet de sécurité..." />;
+  }
+
+  // Écran de chargement des sites
+  if (isLoadingSites) {
+    return <LoadingScreen message="Chargement de vos sites surveillés..." />;
   }
 
   // Écran de connexion

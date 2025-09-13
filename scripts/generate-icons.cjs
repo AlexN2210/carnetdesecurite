@@ -1,40 +1,72 @@
 const fs = require('fs');
 const path = require('path');
 
-// SVG de base pour l'icône du Carnet de Sécurité
+// SVG de base pour l'icône du Carnet de Sécurité - Sécurité Privée
 const iconSvg = `
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#1f2937;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#374151;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="shield" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    <linearGradient id="lock" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
     </linearGradient>
+    <linearGradient id="eye" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </radialGradient>
   </defs>
   
-  <!-- Background circle -->
-  <circle cx="256" cy="256" r="240" fill="url(#bg)" stroke="#1e3a8a" stroke-width="8"/>
+  <!-- Background circle with subtle gradient -->
+  <circle cx="256" cy="256" r="240" fill="url(#bg)" stroke="#4b5563" stroke-width="6"/>
   
-  <!-- Shield -->
-  <path d="M256 80 L200 120 L200 200 C200 250 220 300 256 320 C292 300 312 250 312 200 L312 120 Z" 
-        fill="url(#shield)" stroke="#047857" stroke-width="4"/>
+  <!-- Glow effect -->
+  <circle cx="256" cy="256" r="200" fill="url(#glow)"/>
   
-  <!-- Checkmark -->
-  <path d="M220 200 L240 220 L292 168" 
-        stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Main lock body -->
+  <rect x="200" y="180" width="112" height="80" rx="8" fill="url(#lock)" stroke="#92400e" stroke-width="3"/>
   
-  <!-- Map pin -->
-  <circle cx="256" cy="380" r="20" fill="white" stroke="#1e40af" stroke-width="4"/>
-  <path d="M256 360 L240 380 L272 380 Z" fill="#1e40af"/>
+  <!-- Lock shackle -->
+  <path d="M220 180 Q220 140 256 140 Q292 140 292 180" 
+        stroke="url(#lock)" stroke-width="12" stroke-linecap="round" fill="none"/>
   
-  <!-- Security lines -->
-  <line x1="180" y1="160" x2="180" y2="180" stroke="white" stroke-width="3" stroke-linecap="round"/>
-  <line x1="180" y1="160" x2="200" y2="160" stroke="white" stroke-width="3" stroke-linecap="round"/>
-  <line x1="312" y1="160" x2="312" y2="180" stroke="white" stroke-width="3" stroke-linecap="round"/>
-  <line x1="312" y1="160" x2="292" y2="160" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <!-- Lock keyhole -->
+  <circle cx="256" cy="220" r="8" fill="#1f2937"/>
+  <rect x="252" y="220" width="8" height="16" fill="#1f2937"/>
+  
+  <!-- Surveillance eye -->
+  <circle cx="256" cy="320" r="24" fill="url(#eye)" stroke="#1e40af" stroke-width="4"/>
+  <circle cx="256" cy="320" r="16" fill="#ffffff"/>
+  <circle cx="256" cy="320" r="8" fill="#1f2937"/>
+  
+  <!-- Security shield overlay -->
+  <path d="M256 120 L200 160 L200 240 C200 280 220 320 256 340 C292 320 312 280 312 240 L312 160 Z" 
+        fill="none" stroke="#10b981" stroke-width="4" opacity="0.6"/>
+  
+  <!-- Security dots pattern -->
+  <circle cx="180" y="180" r="4" fill="#6b7280" opacity="0.7"/>
+  <circle cx="332" y="180" r="4" fill="#6b7280" opacity="0.7"/>
+  <circle cx="180" y="280" r="4" fill="#6b7280" opacity="0.7"/>
+  <circle cx="332" y="280" r="4" fill="#6b7280" opacity="0.7"/>
+  
+  <!-- Privacy lines -->
+  <line x1="160" y1="200" x2="180" y2="200" stroke="#6b7280" stroke-width="2" opacity="0.5"/>
+  <line x1="160" y1="220" x2="180" y2="220" stroke="#6b7280" stroke-width="2" opacity="0.5"/>
+  <line x1="160" y1="240" x2="180" y2="240" stroke="#6b7280" stroke-width="2" opacity="0.5"/>
+  
+  <line x1="332" y1="200" x2="352" y2="200" stroke="#6b7280" stroke-width="2" opacity="0.5"/>
+  <line x1="332" y1="220" x2="352" y2="220" stroke="#6b7280" stroke-width="2" opacity="0.5"/>
+  <line x1="332" y1="240" x2="352" y2="240" stroke="#6b7280" stroke-width="2" opacity="0.5"/>
+  
+  <!-- Security checkmark -->
+  <path d="M240 300 L260 320 L280 300" 
+        stroke="#10b981" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 </svg>
 `;
 
