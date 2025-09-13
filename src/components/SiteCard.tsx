@@ -58,32 +58,34 @@ export const SiteCard: React.FC<SiteCardProps> = ({
 
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden hover:border-blue-500 transition-colors">
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-4">
+      <div className="p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-3 sm:space-y-0">
           <div className="flex-1">
-            <h3 className="text-xl font-semibold text-white mb-2">{site.name}</h3>
-            <div className="flex items-center justify-between text-gray-400 mb-2">
-              <div className="flex items-center">
-                <MapPin className="h-4 w-4 mr-2" />
-                <span className="text-sm">{site.address}</span>
+            <h3 className="text-lg md:text-xl font-semibold text-white mb-2">{site.name}</h3>
+            <div className="space-y-2">
+              <div className="flex items-start space-x-2 text-gray-400">
+                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span className="text-sm flex-1">{site.address}</span>
+              </div>
+              <div className="flex items-center justify-between">
                 {site.latitude && site.longitude && (
-                  <span className="ml-2 text-xs bg-green-600 text-white px-2 py-1 rounded" title="Coordonnées précises disponibles">
+                  <span className="text-xs bg-green-600 text-white px-2 py-1 rounded" title="Coordonnées précises disponibles">
                     GPS
                   </span>
                 )}
+                <button
+                  onClick={openInWaze}
+                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                  title={site.latitude && site.longitude ? "Ouvrir dans Waze (coordonnées précises)" : "Ouvrir dans Waze (recherche par adresse)"}
+                >
+                  <Navigation className="h-3 w-3" />
+                  <span>Waze</span>
+                </button>
               </div>
-              <button
-                onClick={openInWaze}
-                className="flex items-center space-x-1 px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-                title={site.latitude && site.longitude ? "Ouvrir dans Waze (coordonnées précises)" : "Ouvrir dans Waze (recherche par adresse)"}
-              >
-                <Navigation className="h-3 w-3" />
-                <span>Waze</span>
-              </button>
             </div>
           </div>
           
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 sm:ml-4">
             <button
               onClick={() => onEdit(site)}
               className="p-2 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded-lg transition-colors"

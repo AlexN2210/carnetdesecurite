@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, LogOut, User } from 'lucide-react';
 import { Header } from './components/Header';
 import { SiteCard } from './components/SiteCard';
 import { SiteForm } from './components/SiteForm';
-import { PasswordModal } from './components/PasswordModal';
+import { AuthModal } from './components/AuthModal';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { Site, AppState } from './types';
-import { loadSites, saveSites, setMasterPassword, checkMasterPassword, hasMasterPassword } from './utils/supabaseStorage';
+import { loadSites, saveSites } from './utils/supabaseStorage';
 import { generateId } from './utils/crypto';
+import { getCurrentUser, signOut, onAuthStateChange } from './utils/auth';
 
 function App() {
   const [state, setState] = useState<AppState>({
@@ -18,61 +19,63 @@ function App() {
   });
   const [showSiteForm, setShowSiteForm] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [isSetupPassword, setIsSetupPassword] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = async () => {
-      const sites = await loadSites();
-      const hasPassword = await hasMasterPassword();
-      
+    // Écouter les changements d'état d'authentification
+    const { data: { subscription } } = onAuthStateChange((user) => {
+      setUser(user);
       setState(prev => ({ 
         ...prev, 
-        sites,
-        isLocked: hasPassword
+        isLocked: !user
       }));
-      
-      if (!hasPassword) {
-        setIsSetupPassword(true);
-        setShowPasswordModal(true);
-      }
-    };
-    
-    loadData();
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handlePasswordSubmit = async (password: string, confirmPassword?: string): Promise<boolean> => {
-    if (isSetupPassword) {
-      await setMasterPassword(password);
-      setState(prev => ({ ...prev, isLocked: false }));
-      setShowPasswordModal(false);
-      setIsSetupPassword(false);
-      return true;
-    } else {
-      const isValid = await checkMasterPassword(password);
-      if (isValid) {
-        setState(prev => ({ ...prev, isLocked: false }));
-        setShowPasswordModal(false);
-      }
-      return isValid;
+  useEffect(() => {
+    // Charger les sites quand l'utilisateur est connecté
+    if (user) {
+      const loadData = async () => {
+        const sites = await loadSites();
+        setState(prev => ({ 
+          ...prev, 
+          sites
+        }));
+      };
+      loadData();
     }
+  }, [user]);
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    setState(prev => ({ 
+      ...prev, 
+      sites: [],
+      isLocked: true, 
+      showSensitiveData: false 
+    }));
   };
 
   const handleLockToggle = () => {
     if (state.isLocked) {
-      setShowPasswordModal(true);
+      setShowAuthModal(true);
     } else {
-      setState(prev => ({ 
-        ...prev, 
-        isLocked: true, 
-        showSensitiveData: false 
-      }));
+      handleLogout();
     }
   };
 
   const handleVisibilityToggle = () => {
     if (!state.showSensitiveData && state.isLocked) {
-      setShowPasswordModal(true);
+      setShowAuthModal(true);
       return;
     }
     setState(prev => ({ 
@@ -133,6 +136,49 @@ function App() {
     site.address.toLowerCase().includes(state.searchQuery.toLowerCase())
   );
 
+  // Écran de chargement
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <p className="text-gray-400">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Écran de connexion
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="mb-8">
+            <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="h-10 w-10 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-2">Carnet de Sécurité</h1>
+            <p className="text-gray-400">Gestion des sites surveillés avec navigation Waze</p>
+          </div>
+          
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+          >
+            Se connecter
+          </button>
+        </div>
+        
+        {showAuthModal && (
+          <AuthModal
+            onSuccess={handleAuthSuccess}
+            onCancel={() => setShowAuthModal(false)}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-900">
       <Header
@@ -142,6 +188,8 @@ function App() {
         onLockToggle={handleLockToggle}
         onVisibilityToggle={handleVisibilityToggle}
         onSearchChange={handleSearchChange}
+        user={user}
+        onLogout={handleLogout}
       />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -178,7 +226,7 @@ function App() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {filteredSites.map(site => (
               <SiteCard
                 key={site.id}
@@ -192,11 +240,10 @@ function App() {
         )}
       </main>
 
-      {showPasswordModal && (
-        <PasswordModal
-          isSetup={isSetupPassword}
-          onSubmit={handlePasswordSubmit}
-          onCancel={isSetupPassword ? undefined : () => setShowPasswordModal(false)}
+      {showAuthModal && (
+        <AuthModal
+          onSuccess={handleAuthSuccess}
+          onCancel={() => setShowAuthModal(false)}
         />
       )}
 
