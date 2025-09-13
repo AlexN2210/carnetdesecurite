@@ -47,89 +47,113 @@ export const PWADownloadButton: React.FC = () => {
     setIsInstalling(true);
     
     try {
-      if (deferredPrompt) {
-        // Utiliser le prompt natif si disponible
-        await deferredPrompt.prompt();
-        const choiceResult = await deferredPrompt.userChoice;
-        
-        if (choiceResult.outcome === 'accepted') {
-          console.log('PWA installée avec succès');
-          setIsInstalled(true);
-        } else {
-          console.log('Installation PWA refusée');
+      // FORCER L'INSTALLATION PWA - MÉTHODES MULTIPLES
+      console.log('🚀 TENTATIVE D\'INSTALLATION PWA FORCÉE...');
+      
+      // Méthode 1: Vérifier le manifest
+      const manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
+      const isHTTPS = location.protocol === 'https:' || location.hostname === 'localhost';
+      const hasManifest = !!manifestLink;
+      const hasServiceWorker = 'serviceWorker' in navigator;
+      
+      console.log('Critères PWA:', {
+        HTTPS: isHTTPS,
+        Manifest: hasManifest,
+        ServiceWorker: hasServiceWorker,
+        Prompt: !!deferredPrompt
+      });
+      
+      // Méthode 2: Essayer de déclencher l'installation via le service worker
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          console.log('✅ Service Worker prêt:', registration);
+          
+          // Essayer de déclencher l'installation
+          if (registration.active) {
+            console.log('🔄 Service Worker actif, tentative d\'installation...');
+          }
+        } catch (error) {
+          console.log('❌ Erreur Service Worker:', error);
         }
-      } else {
-        // FORCER L'INSTALLATION PWA - MÉTHODES MULTIPLES
-        console.log('🚀 TENTATIVE D\'INSTALLATION PWA FORCÉE...');
-        
-        // Méthode 1: Vérifier le manifest
-        const manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
-        if (manifestLink) {
-          console.log('✅ Manifest trouvé:', manifestLink.href);
-        } else {
-          console.log('❌ Manifest non trouvé');
+      }
+      
+      // Méthode 3: Essayer de forcer l'événement beforeinstallprompt
+      console.log('🔄 Tentative de déclenchement manuel de l\'événement...');
+      
+      // Créer un événement personnalisé
+      const customEvent = new CustomEvent('beforeinstallprompt', {
+        detail: {
+          platforms: ['web'],
+          userChoice: Promise.resolve({ outcome: 'accepted', platform: 'web' })
         }
-        
-        // Méthode 2: Vérifier le service worker
-        if ('serviceWorker' in navigator) {
-          console.log('✅ Service Worker supporté');
-          navigator.serviceWorker.getRegistrations().then(registrations => {
-            console.log('Service Workers actifs:', registrations.length);
-          });
-        } else {
-          console.log('❌ Service Worker non supporté');
-        }
-        
-        // Méthode 3: Essayer de déclencher l'événement manuellement
-        console.log('🔄 Tentative de déclenchement manuel...');
-        
-        // Méthode 4: Vérifier les critères PWA
-        const isHTTPS = location.protocol === 'https:' || location.hostname === 'localhost';
-        const hasManifest = !!manifestLink;
-        const hasServiceWorker = 'serviceWorker' in navigator;
-        
-        console.log('Critères PWA:', {
-          HTTPS: isHTTPS,
-          Manifest: hasManifest,
-          ServiceWorker: hasServiceWorker
-        });
-        
-        // Méthode 5: Instructions détaillées avec diagnostic
-        const diagnostic = `
-🔍 DIAGNOSTIC PWA :
+      });
+      
+      // Méthode 4: Instructions avec boutons d'action
+      const instructions = `
+🚀 INSTALLATION PWA - Carnet de Sécurité
+
+🔍 DIAGNOSTIC :
 - HTTPS: ${isHTTPS ? '✅' : '❌'}
 - Manifest: ${hasManifest ? '✅' : '❌'}
 - Service Worker: ${hasServiceWorker ? '✅' : '❌'}
-- Prompt disponible: ${deferredPrompt ? '✅' : '❌'}
-        `;
-        
-        const instructions = `
-🚀 INSTALLATION PWA - Carnet de Sécurité
-
-${diagnostic}
+- Prompt: ${deferredPrompt ? '✅' : '❌'}
 
 📱 SUR ANDROID (Chrome) :
-1. Ouvrez le menu Chrome (⋮) en haut à droite
-2. Sélectionnez "Installer l'application" ou "Ajouter à l'écran d'accueil"
-3. Ou cherchez l'icône d'installation (⬇️) dans la barre d'adresse
+1. Menu Chrome (⋮) → "Installer l'application"
+2. Ou icône d'installation (⬇️) dans la barre d'adresse
+3. Ou "Ajouter à l'écran d'accueil"
 
 💻 SUR DESKTOP (Chrome/Edge) :
-1. Cherchez l'icône d'installation (⬇️) dans la barre d'adresse
-2. Ou menu Chrome (⋮) > "Installer l'application"
-3. Ou Ctrl+Shift+I > Application > Manifest > Install
+1. Icône d'installation (⬇️) dans la barre d'adresse
+2. Menu Chrome (⋮) → "Installer l'application"
+3. F12 → Application → Manifest → Install
 
 🍎 SUR iOS (Safari) :
-1. Appuyez sur le bouton de partage (□↑) en bas
-2. Sélectionnez "Sur l'écran d'accueil"
+1. Bouton partage (□↑) → "Sur l'écran d'accueil"
 
-⚠️ Si aucune option n'apparaît :
+⚠️ Si rien n'apparaît :
 - Rechargez la page (F5)
-- Attendez 10 secondes et réessayez
-- Vérifiez que vous êtes en HTTPS
-        `;
+- Attendez 30 secondes
+- Vérifiez HTTPS
+      `;
+      
+      // Afficher les instructions
+      alert(instructions);
+      
+      // Méthode 5: Essayer de déclencher l'installation après un délai
+      setTimeout(() => {
+        console.log('🔄 Nouvelle tentative d\'installation...');
         
-        alert(instructions);
-      }
+        // Vérifier si le prompt est maintenant disponible
+        if (deferredPrompt) {
+          console.log('✅ Prompt maintenant disponible !');
+          deferredPrompt.prompt().then(() => {
+            console.log('🚀 Installation lancée !');
+          });
+        } else {
+          console.log('❌ Prompt toujours indisponible');
+          
+          // Méthode 6: Créer un lien de téléchargement direct
+          console.log('🔄 Création d\'un lien de téléchargement direct...');
+          
+          // Créer un lien vers le manifest
+          const manifestUrl = manifestLink?.href || '/manifest.json';
+          const downloadLink = document.createElement('a');
+          downloadLink.href = manifestUrl;
+          downloadLink.download = 'carnet-securite.json';
+          downloadLink.textContent = 'Télécharger le manifest';
+          
+          // Essayer de déclencher le téléchargement
+          try {
+            downloadLink.click();
+            console.log('✅ Lien de téléchargement créé');
+          } catch (error) {
+            console.log('❌ Erreur lors de la création du lien:', error);
+          }
+        }
+      }, 2000);
+      
     } catch (error) {
       console.error('Erreur lors de l\'installation PWA:', error);
       alert('Erreur lors de l\'installation. Vérifiez que votre navigateur supporte les PWA.');
