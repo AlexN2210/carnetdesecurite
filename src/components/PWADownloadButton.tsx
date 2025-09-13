@@ -172,7 +172,7 @@ export const PWADownloadButton: React.FC = () => {
           console.log('🔄 Redirection vers la page d\'installation...');
           
           // Créer une page d'installation temporaire
-          const installPage = \`
+          const installPage = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -224,7 +224,7 @@ export const PWADownloadButton: React.FC = () => {
               </script>
             </body>
             </html>
-          \`;
+          `;
           
           // Créer un blob avec la page d'installation
           const blob = new Blob([installPage], { type: 'text/html' });
