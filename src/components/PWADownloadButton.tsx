@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Smartphone, Monitor, Check } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -15,12 +15,7 @@ export const PWADownloadButton: React.FC = () => {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
 
-
   useEffect(() => {
-    // Vérifier si on est sur mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    
     // Vérifier si l'app est déjà installée
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
@@ -31,11 +26,6 @@ export const PWADownloadButton: React.FC = () => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      
-      // LANCER L'INSTALLATION AUTOMATIQUEMENT
-      setTimeout(() => {
-        handleInstallClick();
-      }, 1000); // Attendre 1 seconde puis lancer l'installation
     };
 
     // Écouter l'événement appinstalled
@@ -64,7 +54,6 @@ export const PWADownloadButton: React.FC = () => {
         if (choiceResult.outcome === 'accepted') {
           console.log('PWA installée avec succès');
           setIsInstalled(true);
-          setShowButton(false);
         } else {
           console.log('Installation PWA refusée');
         }
@@ -86,6 +75,29 @@ Ou utilisez le menu de votre navigateur pour installer l'application.`);
     }
   };
 
-  // Ne rien afficher - l'installation est automatique
-  return null;
+  // Debug : toujours afficher le bouton pour tester
+  console.log('PWA Button State:', { isInstalled, deferredPrompt: !!deferredPrompt });
+
+  return (
+    <div className="bg-red-500 p-1 text-white text-xs">
+      PWA BTN
+      <button
+        onClick={handleInstallClick}
+        disabled={isInstalling}
+        className="ml-2 flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors shadow-lg text-sm font-medium"
+      >
+        {isInstalling ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            <span>Installation...</span>
+          </>
+        ) : (
+          <>
+            <Download className="h-4 w-4" />
+            <span>Installer l'app</span>
+          </>
+        )}
+      </button>
+    </div>
+  );
 };
