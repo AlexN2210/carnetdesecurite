@@ -121,35 +121,122 @@ export const PWADownloadButton: React.FC = () => {
       // Afficher les instructions
       alert(instructions);
       
-      // Méthode 5: Essayer de déclencher l'installation après un délai
+      // Méthode 5: FORCER L'INSTALLATION PWA VIA WINDOW.OPEN
       setTimeout(() => {
-        console.log('🔄 Nouvelle tentative d\'installation...');
+        console.log('🔄 Tentative d\'installation PWA forcée...');
         
-        // Vérifier si le prompt est maintenant disponible
         if (deferredPrompt) {
           console.log('✅ Prompt maintenant disponible !');
           deferredPrompt.prompt().then(() => {
             console.log('🚀 Installation lancée !');
           });
         } else {
-          console.log('❌ Prompt toujours indisponible');
+          console.log('❌ Prompt toujours indisponible - FORÇAGE DE L\'INSTALLATION');
           
-          // Méthode 6: Créer un lien de téléchargement direct
-          console.log('🔄 Création d\'un lien de téléchargement direct...');
-          
-          // Créer un lien vers le manifest
-          const manifestUrl = manifestLink?.href || '/manifest.json';
-          const downloadLink = document.createElement('a');
-          downloadLink.href = manifestUrl;
-          downloadLink.download = 'carnet-securite.json';
-          downloadLink.textContent = 'Télécharger le manifest';
-          
-          // Essayer de déclencher le téléchargement
+          // Méthode 6: Forcer l'installation via window.open avec le manifest
           try {
-            downloadLink.click();
-            console.log('✅ Lien de téléchargement créé');
+            // Ouvrir une nouvelle fenêtre avec le manifest
+            const manifestUrl = manifestLink?.href || '/manifest.json';
+            const installWindow = window.open(manifestUrl, '_blank', 'width=400,height=300');
+            
+            if (installWindow) {
+              console.log('✅ Fenêtre d\'installation ouverte');
+              
+              // Essayer de déclencher l'installation dans la nouvelle fenêtre
+              installWindow.addEventListener('load', () => {
+                console.log('🔄 Tentative d\'installation dans la nouvelle fenêtre...');
+                
+                // Injecter du code pour forcer l'installation
+                const script = installWindow.document.createElement('script');
+                script.textContent = `
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.ready.then(registration => {
+                      console.log('Service Worker prêt dans la nouvelle fenêtre');
+                      // Essayer de déclencher l'installation
+                      if (window.beforeinstallprompt) {
+                        window.beforeinstallprompt.prompt();
+                      }
+                    });
+                  }
+                `;
+                installWindow.document.head.appendChild(script);
+              });
+            } else {
+              console.log('❌ Impossible d\'ouvrir la fenêtre d\'installation');
+            }
           } catch (error) {
-            console.log('❌ Erreur lors de la création du lien:', error);
+            console.log('❌ Erreur lors de l\'ouverture de la fenêtre:', error);
+          }
+          
+          // Méthode 7: Redirection vers une page d'installation
+          console.log('🔄 Redirection vers la page d\'installation...');
+          
+          // Créer une page d'installation temporaire
+          const installPage = \`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Installation PWA - Carnet de Sécurité</title>
+              <link rel="manifest" href="/manifest.json">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+                .install-btn { background: #2563eb; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px; }
+                .install-btn:hover { background: #1d4ed8; }
+              </style>
+            </head>
+            <body>
+              <h1>🚀 Installation PWA</h1>
+              <p>Carnet de Sécurité</p>
+              <button class="install-btn" onclick="installPWA()">Installer l'application</button>
+              <script>
+                let deferredPrompt;
+                window.addEventListener('beforeinstallprompt', (e) => {
+                  e.preventDefault();
+                  deferredPrompt = e;
+                  console.log('Prompt PWA disponible !');
+                });
+                
+                function installPWA() {
+                  if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                      if (choiceResult.outcome === 'accepted') {
+                        console.log('PWA installée !');
+                        alert('Application installée avec succès !');
+                      } else {
+                        console.log('Installation refusée');
+                        alert('Installation refusée');
+                      }
+                      deferredPrompt = null;
+                    });
+                  } else {
+                    alert('Installation non disponible. Utilisez le menu de votre navigateur.');
+                  }
+                }
+                
+                // Auto-tentative d'installation
+                setTimeout(() => {
+                  if (deferredPrompt) {
+                    installPWA();
+                  }
+                }, 1000);
+              </script>
+            </body>
+            </html>
+          \`;
+          
+          // Créer un blob avec la page d'installation
+          const blob = new Blob([installPage], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          
+          // Ouvrir la page d'installation
+          const installWindow = window.open(url, '_blank', 'width=500,height=400');
+          
+          if (installWindow) {
+            console.log('✅ Page d\'installation ouverte');
+            // Nettoyer l'URL après utilisation
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
           }
         }
       }, 2000);
