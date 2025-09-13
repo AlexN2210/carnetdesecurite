@@ -1,5 +1,6 @@
 import React from 'react';
 import { Shield, Lock, Unlock, Eye, EyeOff, Search, LogOut, User } from 'lucide-react';
+import { PWADownloadButton } from './PWADownloadButton';
 
 interface HeaderProps {
   isLocked: boolean;
@@ -55,6 +56,8 @@ export const Header: React.FC<HeaderProps> = ({
                 <Eye className="h-5 w-5 text-gray-400" />
               )}
             </button>
+            
+            <PWADownloadButton />
             
             {user && (
               <div className="flex items-center space-x-2 px-3 py-2 bg-gray-800 rounded-lg">

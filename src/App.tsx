@@ -4,7 +4,7 @@ import { Header } from './components/Header';
 import { SiteCard } from './components/SiteCard';
 import { SiteForm } from './components/SiteForm';
 import { AuthModal } from './components/AuthModal';
-import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { PWADownloadButton } from './components/PWADownloadButton';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Site, AppState } from './types';
 import { loadSites, saveSites } from './utils/supabaseStorage';
@@ -263,7 +263,7 @@ function App() {
         />
       )}
 
-      <PWAInstallPrompt />
+      <PWADownloadButton />
     </div>
   );
 }
