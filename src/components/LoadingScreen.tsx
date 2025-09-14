@@ -6,7 +6,8 @@ interface LoadingScreenProps {
 }
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ 
-  message = "Chargement de votre carnet de sécurité..." 
+  message = "Chargement de votre carnet de sécurité...",
+  onEmergencyUnlock
 }) => {
   return (
     <div className="h-screen bg-gray-900 flex items-center justify-center relative overflow-hidden">
@@ -159,6 +160,18 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             <span className="text-xs text-gray-400">Protégé</span>
           </div>
         </div>
+
+        {/* Bouton d'urgence */}
+        {onEmergencyUnlock && (
+          <div className="mt-8 animate-fade-in-delay-3">
+            <button
+              onClick={onEmergencyUnlock}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors opacity-70 hover:opacity-100"
+            >
+              Déverrouiller manuellement
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

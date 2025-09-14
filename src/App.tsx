@@ -40,8 +40,19 @@ function App() {
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // Fallback de sécurité pour éviter un écran blanc permanent
+    const fallbackTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.log('Fallback: Déverrouillage automatique après 3 secondes');
+        setIsLoading(false);
+      }
+    }, 3000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(fallbackTimeout);
+    };
+  }, [isLoading]);
 
   useEffect(() => {
     // Charger les sites quand l'utilisateur est connecté
@@ -149,7 +160,12 @@ function App() {
 
   // Écran de chargement initial
   if (isLoading) {
-    return <LoadingScreen message="Initialisation de votre carnet de sécurité..." />;
+    return (
+      <LoadingScreen 
+        message="Initialisation de votre carnet de sécurité..." 
+        onEmergencyUnlock={() => setIsLoading(false)}
+      />
+    );
   }
 
   // Écran de chargement des sites
