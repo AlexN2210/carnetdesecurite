@@ -144,140 +144,169 @@ export const RoundTracking: React.FC = () => {
   ];
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white flex items-center">
-          <Navigation className="h-6 w-6 mr-2" />
-          Suivi de Ronde
-        </h2>
-        
-        <div className="flex space-x-2">
+    <div className="h-full flex flex-col bg-gray-900">
+      {/* Header mobile optimisé */}
+      <div className="bg-gray-800 px-4 py-3 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white flex items-center">
+            <Navigation className="h-5 w-5 mr-2" />
+            Suivi de Ronde
+          </h2>
           <button
             onClick={() => setShowRounds(!showRounds)}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+            className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
           >
-            <Map className="h-4 w-4 mr-2 inline" />
-            Rondes ({savedRounds.length})
+            <Map className="h-4 w-4 mr-1 inline" />
+            {savedRounds.length}
           </button>
         </div>
       </div>
 
-      {/* Statistiques en temps réel */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gray-700 rounded-lg p-4 text-center">
-          <Footprints className="h-6 w-6 text-blue-400 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-white">{stepCount}</div>
-          <div className="text-sm text-gray-400">Pas</div>
+      {/* Statistiques compactes */}
+      <div className="grid grid-cols-4 gap-2 p-4 bg-gray-800">
+        <div className="bg-gray-700 rounded-lg p-3 text-center">
+          <Footprints className="h-5 w-5 text-blue-400 mx-auto mb-1" />
+          <div className="text-lg font-bold text-white">{stepCount}</div>
+          <div className="text-xs text-gray-400">Pas</div>
         </div>
         
-        <div className="bg-gray-700 rounded-lg p-4 text-center">
-          <Clock className="h-6 w-6 text-green-400 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-white">
+        <div className="bg-gray-700 rounded-lg p-3 text-center">
+          <Clock className="h-5 w-5 text-green-400 mx-auto mb-1" />
+          <div className="text-lg font-bold text-white">
             {isRecording ? formatDuration(Date.now() - (roundData?.startTime || 0)) : '00:00'}
           </div>
-          <div className="text-sm text-gray-400">Durée</div>
+          <div className="text-xs text-gray-400">Durée</div>
         </div>
         
-        <div className="bg-gray-700 rounded-lg p-4 text-center">
-          <Target className="h-6 w-6 text-red-400 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-white">{roundData?.steps.length || 0}</div>
-          <div className="text-sm text-gray-400">Actions</div>
+        <div className="bg-gray-700 rounded-lg p-3 text-center">
+          <Target className="h-5 w-5 text-red-400 mx-auto mb-1" />
+          <div className="text-lg font-bold text-white">{roundData?.steps.length || 0}</div>
+          <div className="text-xs text-gray-400">Actions</div>
         </div>
         
-        <div className="bg-gray-700 rounded-lg p-4 text-center">
-          <Navigation className="h-6 w-6 text-purple-400 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-white">{currentStep}</div>
-          <div className="text-sm text-gray-400">Étape</div>
+        <div className="bg-gray-700 rounded-lg p-3 text-center">
+          <Navigation className="h-5 w-5 text-purple-400 mx-auto mb-1" />
+          <div className="text-lg font-bold text-white">{currentStep}</div>
+          <div className="text-xs text-gray-400">Étape</div>
         </div>
       </div>
 
-      {/* Contrôles principaux */}
-      <div className="flex justify-center space-x-4 mb-6">
-        {!isRecording ? (
-          <button
-            onClick={startRound}
-            className="flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
-          >
-            <Play className="h-5 w-5 mr-2" />
-            Démarrer Ronde
-          </button>
-        ) : (
-          <button
-            onClick={stopRound}
-            className="flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
-          >
-            <Square className="h-5 w-5 mr-2" />
-            Arrêter Ronde
-          </button>
-        )}
-        
-        {isReplaying && (
-          <button
-            onClick={nextReplayStep}
-            className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-          >
-            <RotateCcw className="h-5 w-5 mr-2" />
-            Étape Suivante
-          </button>
-        )}
+      {/* Contrôles principaux - Mobile first */}
+      <div className="p-4 bg-gray-800 border-b border-gray-700">
+        <div className="flex space-x-3">
+          {!isRecording ? (
+            <button
+              onClick={startRound}
+              className="flex-1 flex items-center justify-center px-4 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors font-medium text-lg"
+            >
+              <Play className="h-6 w-6 mr-2" />
+              Démarrer
+            </button>
+          ) : (
+            <button
+              onClick={stopRound}
+              className="flex-1 flex items-center justify-center px-4 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium text-lg"
+            >
+              <Square className="h-6 w-6 mr-2" />
+              Arrêter
+            </button>
+          )}
+          
+          {isReplaying && (
+            <button
+              onClick={nextReplayStep}
+              className="flex-1 flex items-center justify-center px-4 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium text-lg"
+            >
+              <RotateCcw className="h-6 w-6 mr-2" />
+              Suivant
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Pad de navigation */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {navigationButtons.map((button, index) => (
-          <button
-            key={index}
-            onClick={() => addStep(button.action, button.direction)}
-            disabled={!isRecording}
-            className={`${button.color} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed text-white p-4 rounded-lg transition-all transform hover:scale-105 flex flex-col items-center space-y-2`}
-          >
-            <button.icon className="h-6 w-6" />
-            <span className="text-sm font-medium">{button.action}</span>
-          </button>
-        ))}
-      </div>
+      {/* Pad de navigation - Optimisé mobile */}
+      <div className="flex-1 p-4">
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {navigationButtons.map((button, index) => (
+            <button
+              key={index}
+              onClick={() => addStep(button.action, button.direction)}
+              disabled={!isRecording}
+              className={`${button.color} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed text-white p-6 rounded-xl transition-all transform active:scale-95 flex flex-col items-center space-y-3 min-h-[80px]`}
+            >
+              <button.icon className="h-8 w-8" />
+              <span className="text-sm font-medium text-center">{button.action}</span>
+            </button>
+          ))}
+        </div>
 
-      {/* Historique des rondes */}
-      {showRounds && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Rondes Enregistrées</h3>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {savedRounds.map((round) => (
-              <div key={round.id} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-white font-medium">{round.name}</div>
-                  <div className="text-sm text-gray-400">
-                    {round.totalSteps} pas • {round.steps.length} actions • 
-                    {round.duration ? formatDuration(round.duration) : 'En cours'}
+        {/* Log des actions - Mobile optimisé */}
+        {isRecording && roundData && roundData.steps.length > 0 && (
+          <div className="bg-gray-800 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-white mb-3 flex items-center">
+              <Clock className="h-4 w-4 mr-2" />
+              Dernières Actions
+            </h3>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {roundData.steps.slice(-5).map((step) => (
+                <div key={step.id} className="flex items-center justify-between text-xs bg-gray-700 rounded-lg p-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-blue-400 font-medium">{step.action}</span>
+                    {step.direction && <span className="text-gray-500">- {step.direction}</span>}
+                  </div>
+                  <div className="text-gray-400">
+                    {step.steps} pas
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Historique des rondes - Modal mobile */}
+      {showRounds && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-end">
+          <div className="bg-gray-800 w-full max-h-[70vh] rounded-t-xl">
+            <div className="p-4 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Rondes Enregistrées</h3>
                 <button
-                  onClick={() => replayRound(round)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                  onClick={() => setShowRounds(false)}
+                  className="text-gray-400 hover:text-white"
                 >
-                  Rejouer
+                  ✕
                 </button>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Log des actions en temps réel */}
-      {isRecording && roundData && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Actions en Temps Réel</h3>
-          <div className="bg-gray-900 rounded-lg p-4 max-h-40 overflow-y-auto">
-            {roundData.steps.slice(-10).map((step) => (
-              <div key={step.id} className="text-sm text-gray-300 mb-1">
-                <span className="text-blue-400">{step.action}</span>
-                {step.direction && <span className="text-gray-500"> - {step.direction}</span>}
-                <span className="text-gray-500"> - {step.steps} pas</span>
-                <span className="text-gray-600 text-xs ml-2">
-                  {new Date(step.timestamp).toLocaleTimeString()}
-                </span>
-              </div>
-            ))}
+            </div>
+            <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+              {savedRounds.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  Aucune ronde enregistrée
+                </div>
+              ) : (
+                savedRounds.map((round) => (
+                  <div key={round.id} className="bg-gray-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-white font-medium text-sm">{round.name}</div>
+                      <button
+                        onClick={() => {
+                          replayRound(round);
+                          setShowRounds(false);
+                        }}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs"
+                      >
+                        Rejouer
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-400 space-y-1">
+                      <div>{round.totalSteps} pas • {round.steps.length} actions</div>
+                      <div>{round.duration ? formatDuration(round.duration) : 'En cours'}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

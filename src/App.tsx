@@ -276,18 +276,18 @@ function App() {
       )}
 
       {showRoundTracking && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b border-gray-700">
-              <h2 className="text-2xl font-bold text-white">Suivi de Ronde</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50">
+          <div className="h-full flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-800">
+              <h2 className="text-lg font-bold text-white">Suivi de Ronde</h2>
               <button
                 onClick={() => setShowRoundTracking(false)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-gray-400 hover:text-white transition-colors p-2"
               >
                 ✕
               </button>
             </div>
-            <div className="p-6">
+            <div className="flex-1 overflow-hidden">
               <RoundTracking />
             </div>
           </div>
