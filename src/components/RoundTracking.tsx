@@ -74,7 +74,106 @@ export const RoundTracking: React.FC = () => {
   useEffect(() => {
     loadRoundsFromDatabase();
     loadSitesData();
+    recoverTemporaryRounds();
   }, []);
+
+  // Sauvegarde automatique avant fermeture de l'application
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isRecording && roundData) {
+        console.log('🚨 Fermeture de l\'application détectée - Sauvegarde d\'urgence...');
+        
+        // Sauvegarder dans localStorage comme sauvegarde d'urgence
+        localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(roundData));
+        console.log('💾 Sauvegarde d\'urgence effectuée dans localStorage');
+        
+        // Essayer de sauvegarder en base si possible (synchronement)
+        try {
+          saveRound(roundData).then(result => {
+            if (result.success) {
+              console.log('✅ Sauvegarde d\'urgence en base réussie');
+            } else {
+              console.error('❌ Échec sauvegarde d\'urgence en base:', result.error);
+            }
+          });
+        } catch (error) {
+          console.error('❌ Erreur sauvegarde d\'urgence:', error);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isRecording, roundData]);
+
+  // Fonction pour récupérer les rondes temporaires sauvegardées
+  const recoverTemporaryRounds = () => {
+    try {
+      console.log('🔍 Recherche de rondes temporaires...');
+      const tempRounds = [];
+      
+      // Parcourir toutes les clés du localStorage pour trouver les rondes temporaires
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('temp_round_')) {
+          const roundData = JSON.parse(localStorage.getItem(key) || '{}');
+          if (roundData && roundData.id && roundData.steps) {
+            tempRounds.push({ key, roundData });
+            console.log(`📦 Ronde temporaire trouvée: ${roundData.name} (${roundData.steps.length} étapes)`);
+          }
+        }
+      }
+      
+      if (tempRounds.length > 0) {
+        console.log(`🔄 Récupération de ${tempRounds.length} ronde(s) temporaire(s)...`);
+        
+        // Demander à l'utilisateur s'il veut récupérer les rondes temporaires
+        const shouldRecover = window.confirm(
+          `Des rondes en cours ont été détectées (${tempRounds.length} ronde(s)). Voulez-vous les récupérer ?`
+        );
+        
+        if (shouldRecover) {
+          // Récupérer la première ronde temporaire (la plus récente)
+          const mostRecentTemp = tempRounds.sort((a, b) => 
+            b.roundData.startTime - a.roundData.startTime
+          )[0];
+          
+          console.log(`✅ Récupération de la ronde: ${mostRecentTemp.roundData.name}`);
+          
+          // Restaurer la ronde
+          setRoundData(mostRecentTemp.roundData);
+          setIsRecording(true);
+          setCurrentStepIndex(mostRecentTemp.roundData.steps.length - 1);
+          setCurrentStep(mostRecentTemp.roundData.steps.length - 1);
+          
+          // Supprimer la clé temporaire
+          localStorage.removeItem(mostRecentTemp.key);
+          
+          // Supprimer les autres rondes temporaires
+          tempRounds.forEach(temp => {
+            if (temp.key !== mostRecentTemp.key) {
+              localStorage.removeItem(temp.key);
+            }
+          });
+          
+          console.log('✅ Ronde récupérée avec succès');
+        } else {
+          // Supprimer toutes les rondes temporaires si l'utilisateur refuse
+          tempRounds.forEach(temp => {
+            localStorage.removeItem(temp.key);
+          });
+          console.log('🗑️ Rondes temporaires supprimées');
+        }
+      } else {
+        console.log('ℹ️ Aucune ronde temporaire trouvée');
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des rondes temporaires:', error);
+    }
+  };
 
   const loadSitesData = async () => {
     try {
@@ -98,6 +197,38 @@ export const RoundTracking: React.FC = () => {
       stopPedometer();
     };
   }, [isRecording, pedometerEnabled]);
+
+  // Sauvegarde automatique périodique des rondes en cours
+  useEffect(() => {
+    let autoSaveInterval: NodeJS.Timeout;
+    
+    if (isRecording && roundData) {
+      // Sauvegarder automatiquement toutes les 30 secondes
+      autoSaveInterval = setInterval(async () => {
+        try {
+          console.log('⏰ Sauvegarde automatique périodique...');
+          const { success, error } = await saveRound(roundData);
+          if (success) {
+            console.log('✅ Sauvegarde automatique périodique réussie');
+          } else {
+            console.error('❌ Erreur sauvegarde automatique périodique:', error);
+            // Sauvegarde de secours locale
+            localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(roundData));
+          }
+        } catch (error) {
+          console.error('❌ Erreur sauvegarde automatique périodique:', error);
+          // Sauvegarde de secours locale
+          localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(roundData));
+        }
+      }, 30000); // 30 secondes
+    }
+    
+    return () => {
+      if (autoSaveInterval) {
+        clearInterval(autoSaveInterval);
+      }
+    };
+  }, [isRecording, roundData]);
 
   const startPedometer = () => {
     if (typeof window.DeviceMotionEvent !== 'undefined' && window.DeviceMotionEvent.requestPermission) {
@@ -142,6 +273,20 @@ export const RoundTracking: React.FC = () => {
       // et qu'assez de temps s'est écoulé depuis le dernier pas
       if (delta > stepThreshold.current && 
           currentTime - lastStepTime.current > minStepInterval) {
+        
+        // ⚠️ PROTECTION : Ne pas ajouter de pas automatique si une action manuelle vient d'être faite
+        // (évite les doublons et interférences)
+        const timeSinceLastManualAction = roundData?.steps.length > 0 
+          ? currentTime - (roundData.steps[roundData.steps.length - 1]?.timestamp || 0)
+          : Infinity;
+        
+        // Si une action manuelle a été faite il y a moins de 2 secondes, ignorer le pas automatique
+        if (timeSinceLastManualAction < 2000) {
+          console.log('🚫 Pas automatique ignoré - action manuelle récente');
+          lastAcceleration.current = { x, y, z };
+          return;
+        }
+        
         addStep('Marche', 'automatique');
         lastStepTime.current = currentTime;
         
@@ -172,7 +317,7 @@ export const RoundTracking: React.FC = () => {
     }
   };
 
-  const addStep = (action: string, direction?: string, location?: string) => {
+  const addStep = async (action: string, direction?: string, location?: string) => {
     console.log(`🚀🚀🚀 addStep appelée avec: action=${action}, direction=${direction}, isRecording=${isRecording}, roundData=`, roundData);
     console.log(`🚀🚀🚀 ÉTAT COMPLET: isRecording=${isRecording}, roundData=${!!roundData}, roundData.steps.length=${roundData?.steps.length || 0}`);
     
@@ -234,11 +379,13 @@ export const RoundTracking: React.FC = () => {
     console.log(`📊 Nouvelle étape: ${action} - Pas: ${stepCount} - Total pas réels: ${realStepCount}`);
     console.log(`📊 Total étapes: ${updatedSteps.length} (toutes actions confondues)`);
     
-    setRoundData({
+    const updatedRoundData = {
       ...roundData,
       steps: updatedSteps,
       totalSteps: realStepCount
-    });
+    };
+    
+    setRoundData(updatedRoundData);
 
     // Mettre à jour l'index de l'étape actuelle
     setCurrentStepIndex(updatedSteps.length - 1);
@@ -250,6 +397,25 @@ export const RoundTracking: React.FC = () => {
       setShowStepValidation(true);
       setIsStepValidated(false);
       setActualSteps(0); // Reset des pas actuels
+    }
+
+    // 💾 SAUVEGARDE IMMÉDIATE - Sauvegarder automatiquement en temps réel
+    try {
+      console.log('💾 Sauvegarde automatique de la ronde en cours...');
+      const { success, error } = await saveRound(updatedRoundData);
+      if (success) {
+        console.log('✅ Ronde sauvegardée automatiquement avec succès');
+      } else {
+        console.error('❌ Erreur lors de la sauvegarde automatique:', error);
+        // En cas d'erreur, sauvegarder localement comme fallback
+        localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(updatedRoundData));
+        console.log('💾 Sauvegarde de secours dans localStorage');
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde automatique:', error);
+      // En cas d'erreur, sauvegarder localement comme fallback
+      localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(updatedRoundData));
+      console.log('💾 Sauvegarde de secours dans localStorage');
     }
 
     // Log détaillé pour le débogage
