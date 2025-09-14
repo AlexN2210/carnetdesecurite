@@ -6,7 +6,9 @@ import {
   Navigation, Footprints, Clock, Map
 } from 'lucide-react';
 import { saveRound, loadRounds, deleteRound, RoundData } from '../utils/hybridStorage';
+import { loadSites } from '../utils/hybridStorage';
 import { GPSReplay } from './GPSReplay';
+import { Site } from '../types';
 
 // Types pour l'accéléromètre
 interface DeviceMotionEvent extends Event {
@@ -50,6 +52,14 @@ export const RoundTracking: React.FC = () => {
   const [pedometerEnabled, setPedometerEnabled] = useState(false);
   const [showGPSReplay, setShowGPSReplay] = useState(false);
   const [selectedRound, setSelectedRound] = useState<RoundData | null>(null);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('');
+  const [roundNotes, setRoundNotes] = useState<string>('');
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [isStepValidated, setIsStepValidated] = useState(false);
+  const [showStepValidation, setShowStepValidation] = useState(false);
+  const [actualSteps, setActualSteps] = useState(0);
+  const [expectedSteps, setExpectedSteps] = useState(0);
   
   const stepCountRef = useRef(0);
   const roundStartTime = useRef<number>(0);
@@ -58,10 +68,20 @@ export const RoundTracking: React.FC = () => {
   const lastStepTime = useRef(0);
   const minStepInterval = 300; // Intervalle minimum entre les pas (ms)
 
-  // Charger les rondes au montage du composant
+  // Charger les rondes et sites au montage du composant
   useEffect(() => {
     loadRoundsFromDatabase();
+    loadSitesData();
   }, []);
+
+  const loadSitesData = async () => {
+    try {
+      const sitesData = await loadSites();
+      setSites(sitesData || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des sites:', error);
+    }
+  };
 
   // Podomètre basé sur l'accéléromètre
   useEffect(() => {
@@ -123,6 +143,9 @@ export const RoundTracking: React.FC = () => {
         addStep('Marche', 'automatique');
         lastStepTime.current = currentTime;
         
+        // Mettre à jour le compteur de pas actuels pour la validation
+        setActualSteps(prev => prev + 1);
+        
         // Log pour le débogage
         console.log(`Pas détecté automatiquement - Delta: ${delta.toFixed(3)}, Seuil: ${stepThreshold.current}`);
       }
@@ -150,13 +173,19 @@ export const RoundTracking: React.FC = () => {
   const addStep = (action: string, direction?: string, location?: string) => {
     if (!isRecording || !roundData) return;
 
-    // Pour les actions manuelles (boutons), toujours ajouter un pas
-    // Pour les actions automatiques (podomètre), ajouter un pas seulement si c'est un vrai pas
+    // Pour les actions manuelles (boutons), toujours ajouter une étape
+    // Pour les actions automatiques (podomètre), ajouter une étape seulement si c'est un vrai pas
     const isManualAction = direction !== 'automatique';
     const isStepAction = action === 'Marche' || action === 'Tout droit' || action === 'Reculer' || 
                         action === 'Droite' || action === 'Gauche';
 
-    if (isStepAction) {
+    // Incrémenter le compteur d'étapes pour toutes les actions (pas seulement la marche)
+    if (isManualAction) {
+      // Pour les actions manuelles, incrémenter le compteur d'étapes
+      stepCountRef.current += 1;
+      setStepCount(stepCountRef.current);
+    } else if (isStepAction && direction === 'automatique') {
+      // Pour le podomètre automatique, incrémenter seulement pour les vrais pas
       stepCountRef.current += 1;
       setStepCount(stepCountRef.current);
     }
@@ -178,24 +207,71 @@ export const RoundTracking: React.FC = () => {
       totalSteps: stepCountRef.current
     });
 
+    // Mettre à jour les compteurs pour la validation
+    if (isStepAction && isManualAction) {
+      setExpectedSteps(prev => prev + 1);
+      setShowStepValidation(true);
+      setIsStepValidated(false);
+    }
+
     // Log pour le débogage
-    console.log(`Pas ajouté: ${action} ${direction || ''} - Total: ${stepCountRef.current}`);
+    console.log(`Étape ajoutée: ${action} ${direction || ''} - Total: ${stepCountRef.current}`);
+  };
+
+  const validateStep = () => {
+    setIsStepValidated(true);
+    setShowStepValidation(false);
+    setActualSteps(0); // Reset pour la prochaine étape
+  };
+
+  const goToPreviousStep = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(prev => prev - 1);
+      const prevStep = roundData?.steps[currentStepIndex - 1];
+      if (prevStep) {
+        setStepCount(prevStep.steps);
+        stepCountRef.current = prevStep.steps;
+        setCurrentStep(currentStepIndex - 1);
+      }
+    }
+  };
+
+  const goToNextStep = () => {
+    if (roundData && currentStepIndex < roundData.steps.length - 1) {
+      setCurrentStepIndex(prev => prev + 1);
+      const nextStep = roundData.steps[currentStepIndex + 1];
+      if (nextStep) {
+        setStepCount(nextStep.steps);
+        stepCountRef.current = nextStep.steps;
+        setCurrentStep(currentStepIndex + 1);
+      }
+    }
   };
 
   const startRound = () => {
+    const selectedSite = sites.find(site => site.id === selectedSiteId);
     const newRound: RoundData = {
       id: `round_${Date.now()}`,
       name: `Ronde ${new Date().toLocaleString()}`,
       startTime: Date.now(),
       steps: [],
-      totalSteps: 0
+      totalSteps: 0,
+      siteId: selectedSiteId || undefined,
+      siteName: selectedSite?.name,
+      notes: roundNotes || undefined,
+      isCompleted: false
     };
     
     setRoundData(newRound);
     setIsRecording(true);
     setCurrentStep(0);
+    setCurrentStepIndex(0);
     stepCountRef.current = 0;
     setStepCount(0);
+    setActualSteps(0);
+    setExpectedSteps(0);
+    setIsStepValidated(false);
+    setShowStepValidation(false);
   };
 
   const stopRound = async () => {
@@ -203,7 +279,8 @@ export const RoundTracking: React.FC = () => {
       const completedRound = {
         ...roundData,
         endTime: Date.now(),
-        duration: Date.now() - roundData.startTime
+        duration: Date.now() - roundData.startTime,
+        isCompleted: true
       };
       
       // Sauvegarder en base de données
@@ -308,9 +385,9 @@ export const RoundTracking: React.FC = () => {
       {/* Statistiques compactes */}
       <div className="grid grid-cols-4 gap-2 p-3 bg-gray-800 flex-shrink-0">
         <div className="bg-gray-700 rounded-lg p-2 text-center">
-          <Footprints className="h-4 w-4 text-blue-400 mx-auto mb-1" />
+          <Navigation className="h-4 w-4 text-blue-400 mx-auto mb-1" />
           <div className="text-sm font-bold text-white">{stepCount}</div>
-          <div className="text-xs text-gray-400">Pas</div>
+          <div className="text-xs text-gray-400">Étapes</div>
         </div>
         
         <div className="bg-gray-700 rounded-lg p-2 text-center">
@@ -328,11 +405,109 @@ export const RoundTracking: React.FC = () => {
         </div>
         
         <div className="bg-gray-700 rounded-lg p-2 text-center">
-          <Navigation className="h-4 w-4 text-purple-400 mx-auto mb-1" />
-          <div className="text-sm font-bold text-white">{currentStep}</div>
-          <div className="text-xs text-gray-400">Étape</div>
+          <Footprints className="h-4 w-4 text-purple-400 mx-auto mb-1" />
+          <div className="text-sm font-bold text-white">{actualSteps}</div>
+          <div className="text-xs text-gray-400">Pas</div>
         </div>
       </div>
+
+      {/* Affichage de l'étape actuelle et validation */}
+      {isRecording && roundData && roundData.steps.length > 0 && (
+        <div className="p-3 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+          <div className="bg-gray-700 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-white">Étape {currentStepIndex + 1}</h3>
+              <div className="flex space-x-1">
+                <button
+                  onClick={goToPreviousStep}
+                  disabled={currentStepIndex === 0}
+                  className="p-1 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
+                  title="Étape précédente"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={goToNextStep}
+                  disabled={currentStepIndex >= roundData.steps.length - 1}
+                  className="p-1 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
+                  title="Étape suivante"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="text-white font-medium mb-2">
+              {roundData.steps[currentStepIndex]?.action}
+            </div>
+            
+            {/* Comparaison des pas */}
+            {showStepValidation && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400">Pas attendus:</span>
+                  <span className="text-white font-bold">{expectedSteps}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400">Pas effectués:</span>
+                  <span className={`font-bold ${actualSteps >= expectedSteps ? 'text-green-400' : 'text-yellow-400'}`}>
+                    {actualSteps}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400">Reste:</span>
+                  <span className={`font-bold ${expectedSteps - actualSteps <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {Math.max(0, expectedSteps - actualSteps)}
+                  </span>
+                </div>
+                
+                {actualSteps >= expectedSteps && (
+                  <button
+                    onClick={validateStep}
+                    className="w-full mt-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+                  >
+                    Valider l'étape
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Sélection du site et notes (avant de commencer) */}
+      {!isRecording && (
+        <div className="p-3 bg-gray-800 border-b border-gray-700 flex-shrink-0 space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Site de la ronde (optionnel)
+            </label>
+            <select
+              value={selectedSiteId}
+              onChange={(e) => setSelectedSiteId(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+            >
+              <option value="">Sélectionner un site...</option>
+              {sites.map(site => (
+                <option key={site.id} value={site.id}>{site.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Notes de la ronde (optionnel)
+            </label>
+            <textarea
+              value={roundNotes}
+              onChange={(e) => setRoundNotes(e.target.value)}
+              placeholder="Ajoutez des notes sur cette ronde..."
+              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none resize-none"
+              rows={2}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Contrôles principaux - Mobile first */}
       <div className="p-3 bg-gray-800 border-b border-gray-700 flex-shrink-0">
@@ -378,13 +553,13 @@ export const RoundTracking: React.FC = () => {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setPedometerEnabled(!pedometerEnabled)}
-                className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                className={`flex items-center px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
                   pedometerEnabled 
                     ? 'bg-green-600 hover:bg-green-700 text-white' 
                     : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
                 }`}
               >
-                <Footprints className="h-4 w-4 mr-1" />
+                <Footprints className="h-4 w-4 mr-2" />
                 {pedometerEnabled ? 'Podomètre ON' : 'Podomètre OFF'}
               </button>
               
@@ -399,6 +574,14 @@ export const RoundTracking: React.FC = () => {
                 {pedometerEnabled ? 'Détection automatique activée - Bougez le téléphone' : 'Cliquez sur les boutons pour compter manuellement'}
               </span>
             </div>
+
+            {/* Affichage des pas actuels */}
+            {pedometerEnabled && (
+              <div className="bg-gray-700 rounded-lg p-2 text-center">
+                <div className="text-lg font-bold text-white">{actualSteps}</div>
+                <div className="text-xs text-gray-400">Pas détectés</div>
+              </div>
+            )}
           </div>
         )}
       </div>

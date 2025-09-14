@@ -63,23 +63,25 @@ export const GPSReplay: React.FC<GPSReplayProps> = ({ round, onClose }) => {
     
     switch (step.action) {
       case 'Tout droit':
-        return `Étape ${stepNumber} sur ${totalSteps}. Avancez tout droit. Vous avez parcouru ${step.steps} pas.`;
+        return `Étape ${stepNumber} sur ${totalSteps}. Avancez tout droit. Étape numéro ${step.steps}.`;
       case 'Droite':
-        return `Étape ${stepNumber} sur ${totalSteps}. Tournez à droite. Vous avez parcouru ${step.steps} pas.`;
+        return `Étape ${stepNumber} sur ${totalSteps}. Tournez à droite. Étape numéro ${step.steps}.`;
       case 'Gauche':
-        return `Étape ${stepNumber} sur ${totalSteps}. Tournez à gauche. Vous avez parcouru ${step.steps} pas.`;
+        return `Étape ${stepNumber} sur ${totalSteps}. Tournez à gauche. Étape numéro ${step.steps}.`;
       case 'Reculer':
-        return `Étape ${stepNumber} sur ${totalSteps}. Reculer. Vous avez parcouru ${step.steps} pas.`;
+        return `Étape ${stepNumber} sur ${totalSteps}. Reculer. Étape numéro ${step.steps}.`;
       case 'Pointeaux':
-        return `Étape ${stepNumber} sur ${totalSteps}. Vérifiez les pointeaux. Vous avez parcouru ${step.steps} pas.`;
+        return `Étape ${stepNumber} sur ${totalSteps}. Vérifiez les pointeaux. Étape numéro ${step.steps}.`;
       case 'Porte':
-        return `Étape ${stepNumber} sur ${totalSteps}. Vérifiez la porte. Vous avez parcouru ${step.steps} pas.`;
+        return `Étape ${stepNumber} sur ${totalSteps}. Vérifiez la porte. Étape numéro ${step.steps}.`;
       case 'Étage':
-        return `Étape ${stepNumber} sur ${totalSteps}. Vérifiez l'étage. Vous avez parcouru ${step.steps} pas.`;
+        return `Étape ${stepNumber} sur ${totalSteps}. Vérifiez l'étage. Étape numéro ${step.steps}.`;
       case 'Position':
-        return `Étape ${stepNumber} sur ${totalSteps}. Marquez votre position. Vous avez parcouru ${step.steps} pas.`;
+        return `Étape ${stepNumber} sur ${totalSteps}. Marquez votre position. Étape numéro ${step.steps}.`;
+      case 'Marche':
+        return `Étape ${stepNumber} sur ${totalSteps}. Continuez à marcher. Étape numéro ${step.steps}.`;
       default:
-        return `Étape ${stepNumber} sur ${totalSteps}. ${step.action}. Vous avez parcouru ${step.steps} pas.`;
+        return `Étape ${stepNumber} sur ${totalSteps}. ${step.action}. Étape numéro ${step.steps}.`;
     }
   };
 
@@ -89,6 +91,7 @@ export const GPSReplay: React.FC<GPSReplayProps> = ({ round, onClose }) => {
       case 'Droite': return ArrowRight;
       case 'Gauche': return ArrowLeft;
       case 'Reculer': return ArrowDown;
+      case 'Marche': return Footprints;
       case 'Pointeaux': return Target;
       case 'Porte': return DoorOpen;
       case 'Étage': return Building;
@@ -103,6 +106,7 @@ export const GPSReplay: React.FC<GPSReplayProps> = ({ round, onClose }) => {
       case 'Droite': return 'text-blue-400';
       case 'Gauche': return 'text-blue-400';
       case 'Reculer': return 'text-yellow-400';
+      case 'Marche': return 'text-cyan-400';
       case 'Pointeaux': return 'text-red-400';
       case 'Porte': return 'text-purple-400';
       case 'Étage': return 'text-indigo-400';
@@ -245,8 +249,8 @@ export const GPSReplay: React.FC<GPSReplayProps> = ({ round, onClose }) => {
             <div className="bg-gray-900 rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-center space-x-4 text-sm text-gray-400">
                 <div className="flex items-center space-x-1">
-                  <Footprints className="h-4 w-4" />
-                  <span>{currentStep.steps} pas</span>
+                  <Navigation className="h-4 w-4" />
+                  <span>Étape {currentStep.steps}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Clock className="h-4 w-4" />
@@ -359,7 +363,7 @@ export const GPSReplay: React.FC<GPSReplayProps> = ({ round, onClose }) => {
           <div className="grid grid-cols-3 gap-4 text-center text-sm">
             <div>
               <div className="text-white font-bold">{round.totalSteps}</div>
-              <div className="text-gray-400">Pas total</div>
+              <div className="text-gray-400">Étapes total</div>
             </div>
             <div>
               <div className="text-white font-bold">{round.steps.length}</div>

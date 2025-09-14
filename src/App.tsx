@@ -6,6 +6,7 @@ import { SiteForm } from './components/SiteForm';
 import { AuthModal } from './components/AuthModal';
 import { PWADownloadButton } from './components/PWADownloadButton';
 import { RoundTracking } from './components/RoundTracking';
+import { RoundsManager } from './components/RoundsManager';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Site, AppState } from './types';
 import { loadSites, saveSites } from './utils/hybridStorage';
@@ -23,6 +24,7 @@ function App() {
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showRoundTracking, setShowRoundTracking] = useState(false);
+  const [showRoundsManager, setShowRoundsManager] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSites, setIsLoadingSites] = useState(false);
@@ -280,17 +282,34 @@ function App() {
           <div className="h-full flex flex-col">
             <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-800">
               <h2 className="text-lg font-bold text-white">Suivi de Ronde</h2>
-              <button
-                onClick={() => setShowRoundTracking(false)}
-                className="text-gray-400 hover:text-white transition-colors p-2"
-              >
-                ✕
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    setShowRoundTracking(false);
+                    setShowRoundsManager(true);
+                  }}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
+                >
+                  Gestion
+                </button>
+                <button
+                  onClick={() => setShowRoundTracking(false)}
+                  className="text-gray-400 hover:text-white transition-colors p-2"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-hidden">
               <RoundTracking />
             </div>
           </div>
+        </div>
+      )}
+
+      {showRoundsManager && (
+        <div className="fixed inset-0 z-50 bg-gray-900">
+          <RoundsManager onBack={() => setShowRoundsManager(false)} />
         </div>
       )}
 

@@ -25,4 +25,31 @@ export interface AppState {
   isLocked: boolean;
   searchQuery: string;
   showSensitiveData: boolean;
+  rounds: RoundData[];
+  selectedSite: Site | null;
+}
+
+export interface RoundData {
+  id: string;
+  name: string;
+  startTime: number;
+  endTime?: number;
+  steps: RoundStep[];
+  totalSteps: number;
+  duration?: number;
+  userId?: string;
+  siteId?: string;
+  siteName?: string;
+  notes?: string;
+  isCompleted: boolean;
+}
+
+export interface RoundStep {
+  id: string;
+  timestamp: number;
+  action: string;
+  direction?: string;
+  steps: number;
+  location?: string;
+  notes?: string;
 }

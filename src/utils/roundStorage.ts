@@ -19,6 +19,10 @@ export interface RoundData {
   totalSteps: number;
   duration?: number;
   userId?: string;
+  siteId?: string;
+  siteName?: string;
+  notes?: string;
+  isCompleted: boolean;
 }
 
 // Sauvegarder une ronde complète
@@ -37,10 +41,14 @@ export const saveRound = async (roundData: RoundData): Promise<{ success: boolea
         id: roundData.id,
         user_id: user.id,
         name: roundData.name,
+        round_name: roundData.name,
         start_time: new Date(roundData.startTime).toISOString(),
         end_time: roundData.endTime ? new Date(roundData.endTime).toISOString() : null,
         total_steps: roundData.totalSteps,
-        duration_ms: roundData.duration
+        duration_ms: roundData.duration,
+        site_id: roundData.siteId || null,
+        notes: roundData.notes || null,
+        is_completed: roundData.isCompleted || false
       })
       .select()
       .single();
@@ -106,12 +114,16 @@ export const loadRounds = async (): Promise<{ rounds: RoundData[]; error?: strin
     // Transformer les données
     const transformedRounds: RoundData[] = rounds.map(round => ({
       id: round.id,
-      name: round.name,
+      name: round.round_name || round.name,
       startTime: new Date(round.start_time).getTime(),
       endTime: round.end_time ? new Date(round.end_time).getTime() : undefined,
       totalSteps: round.total_steps,
       duration: round.duration_ms,
       userId: round.user_id,
+      siteId: round.site_id,
+      siteName: round.site_name,
+      notes: round.notes,
+      isCompleted: round.is_completed || false,
       steps: round.round_steps
         .sort((a: any, b: any) => a.step_number - b.step_number)
         .map((step: any) => ({
