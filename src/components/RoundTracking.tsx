@@ -391,41 +391,41 @@ export const RoundTracking: React.FC = () => {
       </div>
 
       {/* Statistiques compactes */}
-      <div className="grid grid-cols-4 gap-2 p-3 bg-gray-800 flex-shrink-0">
-        <div className="bg-gray-700 rounded-lg p-2 text-center">
-          <Navigation className="h-4 w-4 text-blue-400 mx-auto mb-1" />
-          <div className="text-sm font-bold text-white">{stepCount}</div>
+      <div className="grid grid-cols-4 gap-1 p-2 bg-gray-800 flex-shrink-0">
+        <div className="bg-gray-700 rounded p-1.5 text-center">
+          <Navigation className="h-3 w-3 text-blue-400 mx-auto mb-0.5" />
+          <div className="text-xs font-bold text-white">{stepCount}</div>
           <div className="text-xs text-gray-400">Étapes</div>
         </div>
         
-        <div className="bg-gray-700 rounded-lg p-2 text-center">
-          <Clock className="h-4 w-4 text-green-400 mx-auto mb-1" />
-          <div className="text-sm font-bold text-white">
+        <div className="bg-gray-700 rounded p-1.5 text-center">
+          <Clock className="h-3 w-3 text-green-400 mx-auto mb-0.5" />
+          <div className="text-xs font-bold text-white">
             {isRecording ? formatDuration(Date.now() - (roundData?.startTime || 0)) : '00:00'}
           </div>
           <div className="text-xs text-gray-400">Durée</div>
         </div>
         
-        <div className="bg-gray-700 rounded-lg p-2 text-center">
-          <Target className="h-4 w-4 text-red-400 mx-auto mb-1" />
-          <div className="text-sm font-bold text-white">{roundData?.steps.length || 0}</div>
+        <div className="bg-gray-700 rounded p-1.5 text-center">
+          <Target className="h-3 w-3 text-red-400 mx-auto mb-0.5" />
+          <div className="text-xs font-bold text-white">{roundData?.steps.length || 0}</div>
           <div className="text-xs text-gray-400">Actions</div>
         </div>
         
-        <div className="bg-gray-700 rounded-lg p-2 text-center">
-          <Footprints className="h-4 w-4 text-purple-400 mx-auto mb-1" />
-          <div className="text-sm font-bold text-white">{actualSteps}</div>
+        <div className="bg-gray-700 rounded p-1.5 text-center">
+          <Footprints className="h-3 w-3 text-purple-400 mx-auto mb-0.5" />
+          <div className="text-xs font-bold text-white">{actualSteps}</div>
           <div className="text-xs text-gray-400">Pas</div>
         </div>
       </div>
 
-      {/* Affichage de l'étape actuelle et validation */}
+      {/* Affichage de l'étape actuelle - Version compacte */}
       {isRecording && roundData && roundData.steps.length > 0 && (
-        <div className="p-3 bg-gray-800 border-b border-gray-700 flex-shrink-0">
-          <div className="bg-gray-700 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-white">
-                Étape {currentStepIndex + 1} sur {roundData.steps.length}
+        <div className="p-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+          <div className="bg-gray-700 rounded-lg p-2">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-xs font-semibold text-white">
+                Étape {currentStepIndex + 1}/{roundData.steps.length}
               </h3>
               <div className="flex space-x-1">
                 <button
@@ -434,7 +434,7 @@ export const RoundTracking: React.FC = () => {
                   className="p-1 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
                   title="Étape précédente"
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className="h-3 w-3" />
                 </button>
                 <button
                   onClick={goToNextStep}
@@ -442,44 +442,39 @@ export const RoundTracking: React.FC = () => {
                   className="p-1 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
                   title="Étape suivante"
                 >
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3 w-3" />
                 </button>
               </div>
             </div>
             
-            <div className="text-white font-medium mb-2">
-              Action: {roundData.steps[currentStepIndex]?.action}
+            <div className="text-white text-sm font-medium mb-1">
+              {roundData.steps[currentStepIndex]?.action}
+              {roundData.steps[currentStepIndex]?.direction && 
+                ` - ${roundData.steps[currentStepIndex]?.direction}`
+              }
             </div>
             
-            {roundData.steps[currentStepIndex]?.direction && (
-              <div className="text-gray-300 text-sm mb-2">
-                Direction: {roundData.steps[currentStepIndex]?.direction}
-              </div>
-            )}
-            
-            {/* Comparaison des pas */}
+            {/* Validation des pas - Version compacte */}
             {showStepValidation && (
-              <div className="space-y-2 mt-3 pt-3 border-t border-gray-600">
-                <div className="flex justify-between items-center text-sm">
+              <div className="mt-2 pt-2 border-t border-gray-600">
+                <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-gray-400">Pas attendus:</span>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={expectedSteps}
-                      onChange={(e) => setExpectedSteps(parseInt(e.target.value) || 1)}
-                      className="w-16 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 focus:border-blue-500 focus:outline-none text-center"
-                    />
-                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={expectedSteps}
+                    onChange={(e) => setExpectedSteps(parseInt(e.target.value) || 1)}
+                    className="w-12 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 focus:border-blue-500 focus:outline-none text-center text-xs"
+                  />
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-400">Pas effectués:</span>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-gray-400">Effectués:</span>
                   <span className={`font-bold ${actualSteps >= expectedSteps ? 'text-green-400' : 'text-yellow-400'}`}>
                     {actualSteps}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center justify-between text-xs mb-2">
                   <span className="text-gray-400">Reste:</span>
                   <span className={`font-bold ${expectedSteps - actualSteps <= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {Math.max(0, expectedSteps - actualSteps)}
@@ -489,97 +484,96 @@ export const RoundTracking: React.FC = () => {
                 {actualSteps >= expectedSteps && (
                   <button
                     onClick={validateStep}
-                    className="w-full mt-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+                    className="w-full px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
                   >
-                    ✅ Valider l'étape
+                    ✅ Valider
                   </button>
                 )}
               </div>
             )}
 
-            {/* Informations de l'étape */}
-            <div className="mt-3 pt-3 border-t border-gray-600 text-xs text-gray-400">
-              <div>Horodatage: {new Date(roundData.steps[currentStepIndex]?.timestamp || 0).toLocaleTimeString()}</div>
-              <div>Étape #{roundData.steps[currentStepIndex]?.steps}</div>
+            {/* Informations de l'étape - Version compacte */}
+            <div className="mt-1 pt-1 border-t border-gray-600 text-xs text-gray-400 flex justify-between">
+              <span>{new Date(roundData.steps[currentStepIndex]?.timestamp || 0).toLocaleTimeString()}</span>
+              <span>#{roundData.steps[currentStepIndex]?.steps}</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Sélection du site et notes (avant de commencer) */}
+      {/* Sélection du site et notes (avant de commencer) - Version compacte */}
       {!isRecording && (
-        <div className="p-3 bg-gray-800 border-b border-gray-700 flex-shrink-0 space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Site de la ronde (optionnel)
-            </label>
-            <select
-              value={selectedSiteId}
-              onChange={(e) => setSelectedSiteId(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
-            >
-              <option value="">Sélectionner un site...</option>
-              {sites.map(site => (
-                <option key={site.id} value={site.id}>{site.name}</option>
-              ))}
-            </select>
+        <div className="p-2 bg-gray-800 border-b border-gray-700 flex-shrink-0 space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1">
+                Site (optionnel)
+              </label>
+              <select
+                value={selectedSiteId}
+                onChange={(e) => setSelectedSiteId(e.target.value)}
+                className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+              >
+                <option value="">Sélectionner...</option>
+                {sites.map(site => (
+                  <option key={site.id} value={site.id}>{site.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1">
+                Pas attendus par action
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={customExpectedSteps}
+                onChange={(e) => setCustomExpectedSteps(parseInt(e.target.value) || 1)}
+                className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+                placeholder="1"
+              />
+            </div>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Notes de la ronde (optionnel)
+            <label className="block text-xs font-medium text-gray-300 mb-1">
+              Notes (optionnel)
             </label>
             <textarea
               value={roundNotes}
               onChange={(e) => setRoundNotes(e.target.value)}
-              placeholder="Ajoutez des notes sur cette ronde..."
-              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none resize-none"
-              rows={2}
+              placeholder="Notes sur cette ronde..."
+              className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none resize-none text-sm"
+              rows={1}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Nombre de pas attendus par action de marche
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={customExpectedSteps}
-              onChange={(e) => setCustomExpectedSteps(parseInt(e.target.value) || 1)}
-              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
-              placeholder="1"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Nombre de pas à effectuer pour valider chaque action de marche
-            </p>
           </div>
         </div>
       )}
 
-      {/* Contrôles principaux - Mobile first */}
-      <div className="p-3 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+      {/* Contrôles principaux - Version compacte */}
+      <div className="p-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
         <div className="flex space-x-2 mb-2">
           {!isRecording ? (
             <button
               onClick={startRound}
               disabled={isLoading}
-              className="flex-1 flex items-center justify-center px-3 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium"
+              className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm"
             >
-              <Play className="h-5 w-5 mr-2" />
+              <Play className="h-4 w-4 mr-1" />
               Démarrer
             </button>
           ) : (
             <button
               onClick={stopRound}
               disabled={isLoading}
-              className="flex-1 flex items-center justify-center px-3 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium"
+              className="flex-1 flex items-center justify-center px-3 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm"
             >
               {isLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-1"></div>
               ) : (
-                <Square className="h-5 w-5 mr-2" />
+                <Square className="h-4 w-4 mr-1" />
               )}
               {isLoading ? 'Sauvegarde...' : 'Arrêter'}
             </button>
@@ -588,47 +582,41 @@ export const RoundTracking: React.FC = () => {
           {isReplaying && (
             <button
               onClick={nextReplayStep}
-              className="flex-1 flex items-center justify-center px-3 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+              className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm"
             >
-              <RotateCcw className="h-5 w-5 mr-2" />
+              <RotateCcw className="h-4 w-4 mr-1" />
               Suivant
             </button>
           )}
         </div>
         
-        {/* Contrôle du podomètre */}
+        {/* Contrôle du podomètre - Version compacte */}
         {isRecording && (
-          <div className="flex flex-col items-center space-y-2">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setPedometerEnabled(!pedometerEnabled)}
-                className={`flex items-center px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                className={`flex items-center px-3 py-1 rounded transition-colors text-xs font-medium ${
                   pedometerEnabled 
                     ? 'bg-green-600 hover:bg-green-700 text-white' 
                     : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
                 }`}
               >
-                <Footprints className="h-4 w-4 mr-2" />
-                {pedometerEnabled ? 'Podomètre ON' : 'Podomètre OFF'}
+                <Footprints className="h-3 w-3 mr-1" />
+                {pedometerEnabled ? 'ON' : 'OFF'}
               </button>
               
               {/* Indicateur de statut */}
-              <div className={`w-3 h-3 rounded-full ${
+              <div className={`w-2 h-2 rounded-full ${
                 pedometerEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
               }`} title={pedometerEnabled ? 'Podomètre actif' : 'Podomètre inactif'} />
             </div>
             
-            <div className="text-center">
-              <span className="text-xs text-gray-400">
-                {pedometerEnabled ? 'Détection automatique activée - Bougez le téléphone' : 'Cliquez sur les boutons pour compter manuellement'}
-              </span>
-            </div>
-
-            {/* Affichage des pas actuels */}
+            {/* Affichage des pas actuels - Version compacte */}
             {pedometerEnabled && (
-              <div className="bg-gray-700 rounded-lg p-2 text-center">
-                <div className="text-lg font-bold text-white">{actualSteps}</div>
-                <div className="text-xs text-gray-400">Pas détectés</div>
+              <div className="bg-gray-700 rounded px-2 py-1 text-center">
+                <div className="text-sm font-bold text-white">{actualSteps}</div>
+                <div className="text-xs text-gray-400">pas</div>
               </div>
             )}
           </div>
@@ -636,37 +624,37 @@ export const RoundTracking: React.FC = () => {
       </div>
 
       {/* Pad de navigation - Optimisé mobile */}
-      <div className="flex-1 p-3 overflow-y-auto">
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-3">
+      <div className="flex-1 p-2 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           {navigationButtons.map((button, index) => (
             <button
               key={index}
               onClick={() => addStep(button.action, button.direction)}
               disabled={!isRecording}
-              className={`${button.color} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2 sm:p-4 rounded-lg transition-all transform active:scale-95 flex flex-col items-center space-y-1 sm:space-y-2 min-h-[50px] sm:min-h-[70px]`}
+              className={`${button.color} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-lg transition-all transform active:scale-95 flex flex-col items-center space-y-1 min-h-[60px] shadow-lg`}
             >
-              <button.icon className="h-4 w-4 sm:h-6 sm:w-6" />
+              <button.icon className="h-5 w-5" />
               <span className="text-xs font-medium text-center">{button.action}</span>
             </button>
           ))}
         </div>
 
-        {/* Log des actions - Mobile optimisé */}
+        {/* Log des actions - Version compacte */}
         {isRecording && roundData && roundData.steps.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-3">
-            <h3 className="text-xs font-semibold text-white mb-2 flex items-center">
+          <div className="bg-gray-800 rounded-lg p-2">
+            <h3 className="text-xs font-semibold text-white mb-1 flex items-center">
               <Clock className="h-3 w-3 mr-1" />
               Dernières Actions
             </h3>
-            <div className="space-y-1 max-h-24 overflow-y-auto">
+            <div className="space-y-1 max-h-20 overflow-y-auto">
               {roundData.steps.slice(-3).map((step) => (
-                <div key={step.id} className="flex items-center justify-between text-xs bg-gray-700 rounded p-1">
+                <div key={step.id} className="flex items-center justify-between text-xs bg-gray-700 rounded px-2 py-1">
                   <div className="flex items-center space-x-1">
                     <span className="text-blue-400 font-medium">{step.action}</span>
                     {step.direction && <span className="text-gray-500">- {step.direction}</span>}
                   </div>
                   <div className="text-gray-400">
-                    {step.steps} pas
+                    {step.steps}
                   </div>
                 </div>
               ))}
