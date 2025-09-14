@@ -26,7 +26,9 @@ export const RoundTracking: React.FC = () => {
   const [walkingSpeed, setWalkingSpeed] = useState(1.4);
   const [currentDistance, setCurrentDistance] = useState(0);
   const [actualSteps, setActualSteps] = useState(0);
-  const [customExpectedSteps] = useState(0);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [pendingDirection, setPendingDirection] = useState<string | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
 
   const stepCountRef = useRef(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -157,7 +159,7 @@ export const RoundTracking: React.FC = () => {
     console.log('✅ Ronde démarrée - isRecording=true, roundData initialisé');
   };
 
-  const addStep = async (action: string, direction?: string, location?: string) => {
+  const addStep = async (action: string, direction?: string) => {
     console.log(`🚀🚀🚀 addStep appelée avec: action=${action}, direction=${direction}`);
     console.log(`🚀🚀🚀 ÉTAT COMPLET: isRecording=${isRecording}, roundData=${!!roundData}`);
     
@@ -171,20 +173,33 @@ export const RoundTracking: React.FC = () => {
       return;
     }
 
-    console.log(`🔄 Ajout d'étape: ${action} ${direction || ''}`);
-    console.log(`🔄 roundData.steps avant:`, roundData.steps);
+    // Stocker l'action en attente de validation
+    setPendingAction(action);
+    setPendingDirection(direction || null);
+    setShowValidation(true);
+    
+    // Arrêter le timer pour la validation
+    stopDistanceTimer();
+    
+    console.log(`⏳ Action en attente de validation: ${action} ${direction || ''}`);
+  };
+
+  const validateStep = async () => {
+    if (!pendingAction || !roundData) return;
+
+    console.log(`✅ Validation de l'action: ${pendingAction} ${pendingDirection || ''}`);
 
     const newStep = {
       id: `step_${Date.now()}_${Math.random()}`,
       timestamp: Date.now(),
-      action,
-      direction,
-      steps: customExpectedSteps || 0,
-      location,
+      action: pendingAction,
+      direction: pendingDirection || undefined,
+      steps: actualSteps,
+      location: '',
       notes: ''
     };
 
-    console.log(`📝 Nouvelle étape créée:`, newStep);
+    console.log(`📝 Nouvelle étape validée:`, newStep);
 
     const updatedSteps = [...roundData.steps, newStep];
     
@@ -217,8 +232,24 @@ export const RoundTracking: React.FC = () => {
       console.error('❌ Erreur sauvegarde localStorage:', error);
     }
 
-    console.log(`✅ Étape ajoutée avec succès: ${action} ${direction || ''} - Total étapes: ${updatedSteps.length}`);
-    console.log('📋 Toutes les étapes actuelles:', updatedSteps.map((s, i) => `${i + 1}. ${s.action}`));
+    // Réinitialiser pour la prochaine action
+    setPendingAction(null);
+    setPendingDirection(null);
+    setShowValidation(false);
+    setCurrentDistance(0);
+    setActualSteps(0);
+
+    console.log(`✅ Étape validée avec succès: ${pendingAction} ${pendingDirection || ''} - Total étapes: ${updatedSteps.length}`);
+  };
+
+  const cancelStep = () => {
+    setPendingAction(null);
+    setPendingDirection(null);
+    setShowValidation(false);
+    // Redémarrer le timer
+    if (timerEnabled) {
+      startDistanceTimer();
+    }
   };
 
   const stopRound = async () => {
@@ -479,10 +510,40 @@ export const RoundTracking: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {/* Affichage de la validation en cours */}
+          {showValidation && pendingAction && (
+            <div className="mt-4 p-4 bg-yellow-900 border border-yellow-600 rounded-lg">
+              <div className="text-yellow-200 font-medium mb-2">
+                ⏳ Validation requise
+              </div>
+              <div className="text-yellow-100 text-sm mb-3">
+                Action: <span className="font-bold">{pendingAction}</span>
+                {pendingDirection && <span className="font-bold"> ({pendingDirection})</span>}
+              </div>
+              <div className="text-yellow-100 text-sm mb-3">
+                Distance parcourue: <span className="font-bold">{currentDistance.toFixed(1)}m</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={validateStep}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium"
+                >
+                  ✅ Valider
+                </button>
+                <button
+                  onClick={cancelStep}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium"
+                >
+                  ❌ Annuler
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Boutons d'actions */}
-        {isRecording && (
+        {isRecording && !showValidation && (
           <div className="flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-2 gap-3">
               {navigationButtons.map((button, index) => {
@@ -502,16 +563,22 @@ export const RoundTracking: React.FC = () => {
           </div>
         )}
 
-        {/* Affichage des étapes en cours */}
+        {/* Message pendant la validation */}
+        {isRecording && showValidation && (
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="text-center text-gray-400">
+              <div className="text-lg mb-2">⏳</div>
+              <div>Validation de l'action en cours...</div>
+              <div className="text-sm mt-1">Veuillez valider ou annuler l'action ci-dessus</div>
+            </div>
+          </div>
+        )}
+
+        {/* Affichage des étapes en cours - Version compacte */}
         {isRecording && roundData && roundData.steps.length > 0 && (
-          <div className="bg-gray-800 p-4 border-t border-gray-700">
-            <h3 className="text-white font-medium mb-2">Actions enregistrées:</h3>
-            <div className="space-y-1 max-h-32 overflow-y-auto">
-              {roundData.steps.map((step, index) => (
-                <div key={step.id} className="text-gray-300 text-sm">
-                  {index + 1}. {step.action} {step.direction ? `(${step.direction})` : ''}
-                </div>
-              ))}
+          <div className="bg-gray-800 p-2 border-t border-gray-700">
+            <div className="text-white text-xs mb-1">
+              Actions: {roundData.steps.length} | Dernière: {roundData.steps[roundData.steps.length - 1]?.action}
             </div>
           </div>
         )}
@@ -545,6 +612,9 @@ export const RoundTracking: React.FC = () => {
                         <div className="text-xs text-gray-400 mt-1">
                           <div>{round.totalSteps} pas • {round.steps.length} actions</div>
                           <div>{round.duration ? formatDuration(round.duration) : 'En cours'}</div>
+                          <div>
+                            Distance totale: {round.steps.reduce((total, step) => total + ((step as any).distance || 0), 0).toFixed(1)}m
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
