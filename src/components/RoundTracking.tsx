@@ -5,6 +5,7 @@ import {
   Play, Pause, Square, RotateCcw,
   Navigation, Footprints, Clock, Map
 } from 'lucide-react';
+import { saveRound, loadRounds, deleteRound, RoundData } from '../utils/roundStorage';
 
 interface RoundStep {
   id: string;
@@ -16,15 +17,7 @@ interface RoundStep {
   notes?: string;
 }
 
-interface RoundData {
-  id: string;
-  name: string;
-  startTime: number;
-  endTime?: number;
-  steps: RoundStep[];
-  totalSteps: number;
-  duration?: number;
-}
+// Interface RoundData maintenant importée depuis roundStorage
 
 export const RoundTracking: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -35,9 +28,15 @@ export const RoundTracking: React.FC = () => {
   const [showRounds, setShowRounds] = useState(false);
   const [isReplaying, setIsReplaying] = useState(false);
   const [replayIndex, setReplayIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   
   const stepCountRef = useRef(0);
   const roundStartTime = useRef<number>(0);
+
+  // Charger les rondes au montage du composant
+  useEffect(() => {
+    loadRoundsFromDatabase();
+  }, []);
 
   // Podomètre simple basé sur les clics de boutons
   useEffect(() => {
@@ -45,6 +44,22 @@ export const RoundTracking: React.FC = () => {
       roundStartTime.current = Date.now();
     }
   }, [isRecording]);
+
+  const loadRoundsFromDatabase = async () => {
+    setIsLoading(true);
+    try {
+      const { rounds, error } = await loadRounds();
+      if (error) {
+        console.error('Erreur lors du chargement des rondes:', error);
+      } else {
+        setSavedRounds(rounds);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const addStep = (action: string, direction?: string, location?: string) => {
     if (!isRecording || !roundData) return;
@@ -86,7 +101,7 @@ export const RoundTracking: React.FC = () => {
     setStepCount(0);
   };
 
-  const stopRound = () => {
+  const stopRound = async () => {
     if (roundData) {
       const completedRound = {
         ...roundData,
@@ -94,7 +109,27 @@ export const RoundTracking: React.FC = () => {
         duration: Date.now() - roundData.startTime
       };
       
-      setSavedRounds(prev => [...prev, completedRound]);
+      // Sauvegarder en base de données
+      setIsLoading(true);
+      try {
+        const { success, error } = await saveRound(completedRound);
+        if (success) {
+          console.log('Ronde sauvegardée avec succès');
+          // Recharger les rondes depuis la base
+          await loadRoundsFromDatabase();
+        } else {
+          console.error('Erreur lors de la sauvegarde:', error);
+          // Sauvegarder localement en fallback
+          setSavedRounds(prev => [...prev, completedRound]);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la sauvegarde:', error);
+        // Sauvegarder localement en fallback
+        setSavedRounds(prev => [...prev, completedRound]);
+      } finally {
+        setIsLoading(false);
+      }
+      
       setRoundData(null);
     }
     
@@ -197,7 +232,8 @@ export const RoundTracking: React.FC = () => {
           {!isRecording ? (
             <button
               onClick={startRound}
-              className="flex-1 flex items-center justify-center px-4 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors font-medium text-lg"
+              disabled={isLoading}
+              className="flex-1 flex items-center justify-center px-4 py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl transition-colors font-medium text-lg"
             >
               <Play className="h-6 w-6 mr-2" />
               Démarrer
@@ -205,10 +241,15 @@ export const RoundTracking: React.FC = () => {
           ) : (
             <button
               onClick={stopRound}
-              className="flex-1 flex items-center justify-center px-4 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium text-lg"
+              disabled={isLoading}
+              className="flex-1 flex items-center justify-center px-4 py-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl transition-colors font-medium text-lg"
             >
-              <Square className="h-6 w-6 mr-2" />
-              Arrêter
+              {isLoading ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mr-2"></div>
+              ) : (
+                <Square className="h-6 w-6 mr-2" />
+              )}
+              {isLoading ? 'Sauvegarde...' : 'Arrêter'}
             </button>
           )}
           
