@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug PWA - Sites</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #111827; color: white; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { background: #1f2937; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #3b82f6; }
+        .error { border-left-color: #ef4444; }
+        .success { border-left-color: #10b981; }
+        .warning { border-left-color: #f59e0b; }
+        button { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        .log { background: #000; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; margin: 10px 0; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success-result { background: #065f46; }
+        .error-result { background: #7f1d1d; }
+        .warning-result { background: #92400e; }
+        .info-result { background: #1e40af; }
+        .step { background: #374151; padding: 15px; margin: 10px 0; border-radius: 4px; border-left: 3px solid #10b981; }
+        .app-link { background: #059669; padding: 15px; border-radius: 4px; margin: 10px 0; text-align: center; }
+        .app-link a { color: white; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Debug PWA - Sites</h1>
+        
+        <div class="step">
+            <h3>Instructions :</h3>
+            <ol>
+                <li>Ouvrez l'application principale dans un nouvel onglet</li>
+                <li>Connectez-vous et créez un site</li>
+                <li>Revenez sur cette page et cliquez sur "Debug complet"</li>
+                <li>Vérifiez les logs pour identifier le problème</li>
+            </ol>
+        </div>
+
+        <div class="app-link">
+            <a href="http://localhost:5173" target="_blank">🔗 Ouvrir l'application principale</a>
+        </div>
+
+        <div class="section">
+            <h2>1. Debug de l'authentification</h2>
+            <button onclick="debugAuth()">Debug Auth</button>
+            <div id="auth-result"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. Debug du chargement des sites</h2>
+            <button onclick="debugLoadSites()">Debug Load Sites</button>
+            <div id="load-result"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. Debug de la sauvegarde des sites</h2>
+            <button onclick="debugSaveSites()">Debug Save Sites</button>
+            <div id="save-result"></div>
+        </div>
+
+        <div class="section">
+            <h2>4. Debug complet</h2>
+            <button onclick="debugAll()">Debug complet</button>
+            <div id="all-result"></div>
+        </div>
+
+        <div class="section">
+            <h2>5. Test avec l'application</h2>
+            <button onclick="testWithApp()">Tester avec l'app</button>
+            <div id="app-result"></div>
+        </div>
+
+        <div class="section">
+            <h2>Logs de débogage</h2>
+            <div id="debug-log" class="log">Prêt pour le debug...\n</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+
+        const supabaseUrl = 'https://yqckzyubenfsjmopvtok.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxY2t6eXViZW5mc2ptb3B2dG9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NTk2NTQsImV4cCI6MjA3MzMzNTY1NH0.agVhTsVGc-fggAjNPteSSOrhViV5vLa65OHaWdHQbIk';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const log = (message, type = 'info') => {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                error: '#ef4444',
+                success: '#10b981', 
+                warning: '#f59e0b',
+                info: '#6b7280'
+            };
+            logDiv.innerHTML += `<span style="color: ${colors[type]}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        const addResult = (elementId, message, type) => {
+            const element = document.getElementById(elementId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}-result`;
+            resultDiv.textContent = message;
+            element.appendChild(resultDiv);
+        };
+
+        const clearResults = (elementId) => {
+            const element = document.getElementById(elementId);
+            element.innerHTML = '';
+        };
+
+        window.debugAuth = async () => {
+            clearResults('auth-result');
+            log('Debug de l\'authentification...');
+            
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    addResult('auth-result', `Erreur auth: ${error.message}`, 'error');
+                    log(`Erreur auth: ${error.message}`, 'error');
+                } else if (user) {
+                    addResult('auth-result', `Connecté: ${user.email} (ID: ${user.id})`, 'success');
+                    log(`Utilisateur connecté: ${user.email}`, 'success');
+                    log(`User ID: ${user.id}`, 'info');
+                    log(`Type d'ID: ${typeof user.id}`, 'info');
+                    log(`Longueur ID: ${user.id.length}`, 'info');
+                } else {
+                    addResult('auth-result', 'Aucun utilisateur connecté', 'warning');
+                    log('Aucun utilisateur connecté', 'warning');
+                }
+            } catch (error) {
+                addResult('auth-result', `Erreur: ${error.message}`, 'error');
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        };
+
+        window.debugLoadSites = async () => {
+            clearResults('load-result');
+            log('Debug du chargement des sites...');
+            
+            try {
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                if (authError || !user) {
+                    addResult('load-result', 'Pas d\'utilisateur connecté', 'error');
+                    log('Pas d\'utilisateur connecté', 'error');
+                    return;
+                }
+
+                log(`Recherche des sites pour l'utilisateur: ${user.id}`, 'info');
+
+                const { data, error } = await supabase
+                    .from('sites')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    addResult('load-result', `Erreur de chargement: ${error.message}`, 'error');
+                    log(`Erreur chargement: ${error.message}`, 'error');
+                    log(`Code: ${error.code}`, 'error');
+                    log(`Détails: ${JSON.stringify(error, null, 2)}`, 'error');
+                } else {
+                    addResult('load-result', `${data.length} site(s) trouvé(s)`, 'success');
+                    log(`${data.length} site(s) trouvé(s)`, 'success');
+                    data.forEach((site, index) => {
+                        log(`${index + 1}. ${site.name} - ${site.address}`, 'info');
+                        log(`   ID: ${site.id}`, 'info');
+                        log(`   User ID: ${site.user_id}`, 'info');
+                        log(`   Créé: ${site.created_at}`, 'info');
+                    });
+                }
+            } catch (error) {
+                addResult('load-result', `Erreur: ${error.message}`, 'error');
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        };
+
+        window.debugSaveSites = async () => {
+            clearResults('save-result');
+            log('Debug de la sauvegarde des sites...');
+            
+            try {
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                if (authError || !user) {
+                    addResult('save-result', 'Pas d\'utilisateur connecté', 'error');
+                    log('Pas d\'utilisateur connecté', 'error');
+                    return;
+                }
+
+                const testSite = {
+                    id: 'debug_' + Date.now(),
+                    user_id: user.id,
+                    name: 'Site de debug PWA',
+                    address: '123 Rue Debug PWA, Paris',
+                    latitude: 48.8566,
+                    longitude: 2.3522,
+                    notes: 'Test de sauvegarde pour debug PWA',
+                    access_means: JSON.stringify([{
+                        id: 'access_1',
+                        type: 'key',
+                        description: 'Clé debug',
+                        code: '1234',
+                        location: 'Boîte'
+                    }]),
+                    has_alarm: false,
+                    alarm_code: null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+
+                log('Données à insérer:', 'info');
+                log(JSON.stringify(testSite, null, 2), 'info');
+
+                const { data, error } = await supabase
+                    .from('sites')
+                    .insert([testSite])
+                    .select();
+
+                if (error) {
+                    addResult('save-result', `Erreur d'insertion: ${error.message}`, 'error');
+                    log(`Erreur insertion: ${error.message}`, 'error');
+                    log(`Code: ${error.code}`, 'error');
+                    log(`Détails: ${JSON.stringify(error, null, 2)}`, 'error');
+                } else {
+                    addResult('save-result', 'Site sauvegardé avec succès', 'success');
+                    log('Site sauvegardé avec succès', 'success');
+                    log(`Données retournées: ${JSON.stringify(data, null, 2)}`, 'info');
+                }
+            } catch (error) {
+                addResult('save-result', `Erreur: ${error.message}`, 'error');
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        };
+
+        window.testWithApp = async () => {
+            clearResults('app-result');
+            log('Test avec l\'application...');
+            
+            try {
+                const response = await fetch('http://localhost:5173');
+                if (response.ok) {
+                    addResult('app-result', 'Application accessible', 'success');
+                    log('Application accessible', 'success');
+                    addResult('app-result', 'Ouvrez http://localhost:5173 dans un nouvel onglet et connectez-vous', 'info');
+                } else {
+                    addResult('app-result', 'Application non accessible', 'error');
+                    log('Application non accessible', 'error');
+                }
+            } catch (error) {
+                addResult('app-result', `Erreur: ${error.message}`, 'error');
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        };
+
+        window.debugAll = async () => {
+            log('Debug complet démarré...', 'info');
+            clearResults('all-result');
+            
+            await debugAuth();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await debugLoadSites();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await debugSaveSites();
+            
+            log('Debug complet terminé', 'success');
+            addResult('all-result', 'Debug complet terminé - vérifiez les résultats ci-dessus', 'info');
+        };
+
+        // Auto-debug au chargement
+        window.addEventListener('load', () => {
+            log('Page de debug chargée', 'success');
+            debugAuth();
+        });
+    </script>
+</body>
+</html>

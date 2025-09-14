@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Lock, Unlock, Eye, EyeOff, Search, LogOut, User } from 'lucide-react';
+import { Shield, Lock, Unlock, Eye, EyeOff, Search, LogOut, User, RefreshCw } from 'lucide-react';
 import { PWADownloadButton } from './PWADownloadButton';
 
 interface HeaderProps {
@@ -11,6 +11,8 @@ interface HeaderProps {
   onSearchChange: (query: string) => void;
   user?: any;
   onLogout?: () => void;
+  onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,6 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
   user,
   onLogout,
+  onRefresh,
+  isLoading,
 }) => {
   return (
     <header className="bg-gray-900 border-b border-gray-700 px-4 py-4">
@@ -56,6 +60,17 @@ export const Header: React.FC<HeaderProps> = ({
                 <Eye className="h-5 w-5 text-gray-400" />
               )}
             </button>
+            
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={isLoading}
+                className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors disabled:opacity-50"
+                title="Recharger les sites"
+              >
+                <RefreshCw className={`h-5 w-5 text-blue-400 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            )}
             
             <PWADownloadButton />
             
@@ -96,6 +111,17 @@ export const Header: React.FC<HeaderProps> = ({
                   <Eye className="h-4 w-4 text-gray-400" />
                 )}
               </button>
+              
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  disabled={isLoading}
+                  className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  title="Recharger les sites"
+                >
+                  <RefreshCw className={`h-4 w-4 text-blue-400 ${isLoading ? 'animate-spin' : ''}`} />
+                </button>
+              )}
               
               <button
                 onClick={onLogout}

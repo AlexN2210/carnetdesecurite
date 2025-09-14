@@ -90,18 +90,31 @@ function App() {
     // Charger les sites quand l'utilisateur est connecté
     if (user) {
       const loadData = async () => {
+        console.log('🔄 Chargement des sites pour utilisateur:', user.email);
         setIsLoadingSites(true);
         try {
           const sites = await loadSites();
+          console.log('✅ Sites chargés dans App:', sites.length, 'sites');
+          sites.forEach((site, index) => {
+            console.log(`${index + 1}. ${site.name} - ${site.address}`);
+          });
           setState(prev => ({ 
             ...prev, 
             sites
           }));
+        } catch (error) {
+          console.error('❌ Erreur lors du chargement des sites:', error);
         } finally {
           setIsLoadingSites(false);
         }
       };
       loadData();
+    } else {
+      console.log('⚠️ Pas d\'utilisateur connecté, effacement des sites');
+      setState(prev => ({ 
+        ...prev, 
+        sites: []
+      }));
     }
   }, [user]);
 
@@ -143,9 +156,11 @@ function App() {
   };
 
   const handleSaveSite = async (siteData: Omit<Site, 'id' | 'createdAt' | 'updatedAt'>) => {
+    console.log('💾 Sauvegarde d\'un site:', siteData.name);
     let newSites: Site[];
     
     if (editingSite) {
+      console.log('✏️ Modification d\'un site existant:', editingSite.name);
       newSites = state.sites.map(site =>
         site.id === editingSite.id
           ? {
@@ -157,6 +172,7 @@ function App() {
           : site
       );
     } else {
+      console.log('➕ Création d\'un nouveau site:', siteData.name);
       const newSite: Site = {
         ...siteData,
         id: generateId(),
@@ -166,8 +182,16 @@ function App() {
       newSites = [...state.sites, newSite];
     }
 
+    console.log('📊 Nouveau nombre de sites:', newSites.length);
     setState(prev => ({ ...prev, sites: newSites }));
-    await saveSites(newSites);
+    
+    try {
+      await saveSites(newSites);
+      console.log('✅ Site sauvegardé avec succès');
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde:', error);
+    }
+    
     setShowSiteForm(false);
     setEditingSite(undefined);
   };
@@ -179,9 +203,28 @@ function App() {
 
   const handleDeleteSite = async (siteId: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce site ?')) {
+      console.log('🗑️ Suppression du site:', siteId);
       const newSites = state.sites.filter(site => site.id !== siteId);
+      console.log('📊 Nouveau nombre de sites après suppression:', newSites.length);
       setState(prev => ({ ...prev, sites: newSites }));
       await saveSites(newSites);
+    }
+  };
+
+  const handleRefreshSites = async () => {
+    console.log('🔄 Rechargement manuel des sites...');
+    setIsLoadingSites(true);
+    try {
+      const sites = await loadSites();
+      console.log('✅ Sites rechargés manuellement:', sites.length, 'sites');
+      setState(prev => ({ 
+        ...prev, 
+        sites
+      }));
+    } catch (error) {
+      console.error('❌ Erreur lors du rechargement manuel:', error);
+    } finally {
+      setIsLoadingSites(false);
     }
   };
 
@@ -238,16 +281,18 @@ function App() {
 
   return (
     <div className="h-screen bg-gray-900 w-full overflow-x-hidden flex flex-col">
-      <Header
-        isLocked={state.isLocked}
-        showSensitiveData={state.showSensitiveData}
-        searchQuery={state.searchQuery}
-        onLockToggle={handleLockToggle}
-        onVisibilityToggle={handleVisibilityToggle}
-        onSearchChange={handleSearchChange}
-        user={user}
-        onLogout={handleLogout}
-      />
+          <Header
+            isLocked={state.isLocked}
+            showSensitiveData={state.showSensitiveData}
+            searchQuery={state.searchQuery}
+            onLockToggle={handleLockToggle}
+            onVisibilityToggle={handleVisibilityToggle}
+            onSearchChange={handleSearchChange}
+            user={user}
+            onLogout={handleLogout}
+            onRefresh={handleRefreshSites}
+            isLoading={isLoadingSites}
+          />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full overflow-x-hidden overflow-y-auto mobile-scroll-container">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">

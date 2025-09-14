@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug PWA Simple</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #111827; color: white; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { background: #1f2937; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #3b82f6; }
+        .error { border-left-color: #ef4444; }
+        .success { border-left-color: #10b981; }
+        .warning { border-left-color: #f59e0b; }
+        button { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        .log { background: #000; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; margin: 10px 0; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success-result { background: #065f46; }
+        .error-result { background: #7f1d1d; }
+        .warning-result { background: #92400e; }
+        .info-result { background: #1e40af; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Debug PWA Simple</h1>
+        
+        <div class="section">
+            <h2>1. Test de base</h2>
+            <button onclick="testBasic()">Test de base</button>
+            <div id="basic-result"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. Test avec l'application</h2>
+            <button onclick="testWithApp()">Tester avec l'app</button>
+            <div id="app-result"></div>
+        </div>
+
+        <div class="section">
+            <h2>Logs de débogage</h2>
+            <div id="debug-log" class="log">Prêt...\n</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+
+        const supabaseUrl = 'https://yqckzyubenfsjmopvtok.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxY2t6eXViZW5mc2ptb3B2dG9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NTk2NTQsImV4cCI6MjA3MzMzNTY1NH0.agVhTsVGc-fggAjNPteSSOrhViV5vLa65OHaWdHQbIk';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const log = (message, type = 'info') => {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                error: '#ef4444',
+                success: '#10b981', 
+                warning: '#f59e0b',
+                info: '#6b7280'
+            };
+            logDiv.innerHTML += `<span style="color: ${colors[type]}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        const addResult = (elementId, message, type) => {
+            const element = document.getElementById(elementId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}-result`;
+            resultDiv.textContent = message;
+            element.appendChild(resultDiv);
+        };
+
+        window.testBasic = async () => {
+            log('Test de base...');
+            
+            try {
+                // Test 1: Connexion Supabase
+                const { data, error } = await supabase.from('sites').select('count').limit(1);
+                if (error) {
+                    addResult('basic-result', `Erreur Supabase: ${error.message}`, 'error');
+                    return;
+                }
+                log('✅ Supabase OK');
+
+                // Test 2: Auth
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                if (authError) {
+                    addResult('basic-result', `Erreur Auth: ${authError.message}`, 'error');
+                    return;
+                }
+                
+                if (!user) {
+                    addResult('basic-result', 'Pas d\'utilisateur connecté', 'warning');
+                    addResult('basic-result', 'Ouvrez http://localhost:5173 et connectez-vous', 'info');
+                    return;
+                }
+                
+                log(`✅ User: ${user.email} (${user.id})`);
+
+                // Test 3: Chargement sites
+                const { data: sites, error: loadError } = await supabase
+                    .from('sites')
+                    .select('*')
+                    .eq('user_id', user.id);
+
+                if (loadError) {
+                    addResult('basic-result', `Erreur chargement: ${loadError.message}`, 'error');
+                    return;
+                }
+
+                addResult('basic-result', `${sites.length} site(s) trouvé(s)`, 'success');
+                sites.forEach((site, index) => {
+                    log(`${index + 1}. ${site.name} - ${site.address}`);
+                });
+
+            } catch (error) {
+                addResult('basic-result', `Erreur: ${error.message}`, 'error');
+                log(`Erreur: ${error.message}`);
+            }
+        };
+
+        window.testWithApp = async () => {
+            log('Test avec l\'application...');
+            
+            try {
+                const response = await fetch('http://localhost:5173');
+                if (response.ok) {
+                    addResult('app-result', 'Application accessible', 'success');
+                    addResult('app-result', 'Ouvrez http://localhost:5173 et testez la création de sites', 'info');
+                } else {
+                    addResult('app-result', 'Application non accessible', 'error');
+                }
+            } catch (error) {
+                addResult('app-result', `Erreur: ${error.message}`, 'error');
+            }
+        };
+
+        // Auto-test au chargement
+        window.addEventListener('load', () => {
+            log('Page chargée');
+            testBasic();
+        });
+    </script>
+</body>
+</html>
