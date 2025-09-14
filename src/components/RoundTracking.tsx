@@ -2,434 +2,133 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight, 
   Target, DoorOpen, Building, MapPin, 
-  Play, Pause, Square, RotateCcw,
-  Navigation, Footprints, Clock, Map
+  Play, Square, Navigation
 } from 'lucide-react';
-import { saveRound, loadRounds, deleteRound, RoundData } from '../utils/hybridStorage';
+import { saveRound, loadRounds } from '../utils/hybridStorage';
 import { loadSites } from '../utils/hybridStorage';
+import { RoundData } from '../utils/roundStorage';
 import { GPSReplay } from './GPSReplay';
-import { Site } from '../types';
-
-// Types pour l'accéléromètre
-interface DeviceMotionEvent extends Event {
-  accelerationIncludingGravity: {
-    x: number | null;
-    y: number | null;
-    z: number | null;
-  } | null;
-}
-
-declare global {
-  interface Window {
-    DeviceMotionEvent: {
-      requestPermission?: () => Promise<string>;
-    };
-  }
-}
-
-interface RoundStep {
-  id: string;
-  timestamp: number;
-  action: string;
-  direction?: string;
-  steps: number;
-  location?: string;
-  notes?: string;
-}
-
-// Interface RoundData maintenant importée depuis localStorage
 
 export const RoundTracking: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
   const [roundData, setRoundData] = useState<RoundData | null>(null);
-  const [stepCount, setStepCount] = useState(0);
   const [savedRounds, setSavedRounds] = useState<RoundData[]>([]);
   const [showRounds, setShowRounds] = useState(false);
-  const [isReplaying, setIsReplaying] = useState(false);
-  const [replayIndex, setReplayIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [sites, setSites] = useState<any[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('');
+  const [roundNotes, setRoundNotes] = useState('');
   const [showGPSReplay, setShowGPSReplay] = useState(false);
   const [selectedRound, setSelectedRound] = useState<RoundData | null>(null);
-  const [sites, setSites] = useState<Site[]>([]);
-  const [selectedSiteId, setSelectedSiteId] = useState<string>('');
-  const [roundNotes, setRoundNotes] = useState<string>('');
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [isStepValidated, setIsStepValidated] = useState(false);
-  const [showStepValidation, setShowStepValidation] = useState(false);
+  
+  // Timer et distance
+  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [userHeight, setUserHeight] = useState(175);
+  const [walkingSpeed, setWalkingSpeed] = useState(1.4);
+  const [currentDistance, setCurrentDistance] = useState(0);
   const [actualSteps, setActualSteps] = useState(0);
-  const [expectedSteps, setExpectedSteps] = useState(0);
-  const [customExpectedSteps, setCustomExpectedSteps] = useState(1);
-  const [showValidationPanel, setShowValidationPanel] = useState(true);
-  
-  // 🚶‍♂️ NOUVEAUX PARAMÈTRES POUR LE CALCUL DE DISTANCE (avec persistance)
-  const [userHeight, setUserHeight] = useState(() => {
-    const saved = localStorage.getItem('user_height');
-    return saved ? parseInt(saved) : 175;
-  });
-  const [walkingSpeed, setWalkingSpeed] = useState(() => {
-    const saved = localStorage.getItem('walking_speed');
-    return saved ? parseFloat(saved) : 5.0;
-  });
-  const [currentDistance, setCurrentDistance] = useState(0); // Distance parcourue en mètres
-  const [walkingStartTime, setWalkingStartTime] = useState<number | null>(null);
-  
-  const stepCountRef = useRef(0);
-  const roundStartTime = useRef<number>(0);
-  const timerInterval = useRef<NodeJS.Timeout | null>(null);
+  const [customExpectedSteps] = useState(0);
 
-  // Charger les rondes et sites au montage du composant
+  const stepCountRef = useRef(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Charger les paramètres utilisateur depuis localStorage
   useEffect(() => {
-    loadRoundsFromDatabase();
-    loadSitesData();
-    recoverTemporaryRounds();
+    const savedHeight = localStorage.getItem('userHeight');
+    const savedSpeed = localStorage.getItem('walkingSpeed');
+    
+    if (savedHeight) {
+      setUserHeight(parseInt(savedHeight));
+    }
+    if (savedSpeed) {
+      setWalkingSpeed(parseFloat(savedSpeed));
+    }
   }, []);
 
-  // 💾 SAUVEGARDE AUTOMATIQUE DES PARAMÈTRES
+  // Sauvegarder les paramètres utilisateur
   useEffect(() => {
-    localStorage.setItem('user_height', userHeight.toString());
-    console.log('💾 Taille sauvegardée:', userHeight);
+    localStorage.setItem('userHeight', userHeight.toString());
   }, [userHeight]);
 
   useEffect(() => {
-    localStorage.setItem('walking_speed', walkingSpeed.toString());
-    console.log('💾 Vitesse sauvegardée:', walkingSpeed);
+    localStorage.setItem('walkingSpeed', walkingSpeed.toString());
   }, [walkingSpeed]);
 
-  // Sauvegarde automatique avant fermeture de l'application
+  // Charger les sites
   useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (isRecording && roundData) {
-        console.log('🚨 Fermeture de l\'application détectée - Sauvegarde d\'urgence...');
-        
-        // Sauvegarder dans localStorage comme sauvegarde d'urgence
-        localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(roundData));
-        console.log('💾 Sauvegarde d\'urgence effectuée dans localStorage');
-        
-        // Essayer de sauvegarder en base si possible (synchronement)
-        try {
-          saveRound(roundData).then(result => {
-            if (result.success) {
-              console.log('✅ Sauvegarde d\'urgence en base réussie');
-            } else {
-              console.error('❌ Échec sauvegarde d\'urgence en base:', result.error);
-            }
-          });
-        } catch (error) {
-          console.error('❌ Erreur sauvegarde d\'urgence:', error);
-        }
+    const loadSitesData = async () => {
+      try {
+        const sitesData = await loadSites();
+        setSites(sitesData);
+      } catch (error) {
+        console.error('Erreur lors du chargement des sites:', error);
       }
     };
+    loadSitesData();
+  }, []);
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [isRecording, roundData]);
+  // Charger les rondes
+  useEffect(() => {
+    loadRoundsFromDatabase();
+  }, []);
 
-
-  // Fonction pour récupérer les rondes temporaires sauvegardées
-  const recoverTemporaryRounds = () => {
+  const loadRoundsFromDatabase = async () => {
     try {
-      console.log('🔍 Recherche de rondes temporaires...');
-      const tempRounds = [];
+      // Charger depuis localStorage d'abord pour affichage immédiat
+      const localRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+      setSavedRounds(localRounds);
       
-      // Parcourir toutes les clés du localStorage pour trouver les rondes temporaires
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('temp_round_')) {
-          const roundData = JSON.parse(localStorage.getItem(key) || '{}');
-          if (roundData && roundData.id && roundData.steps) {
-            tempRounds.push({ key, roundData });
-            console.log(`📦 Ronde temporaire trouvée: ${roundData.name} (${roundData.steps.length} étapes)`);
-          }
-        }
-      }
-      
-      if (tempRounds.length > 0) {
-        console.log(`🔄 Récupération de ${tempRounds.length} ronde(s) temporaire(s)...`);
-        
-        // Demander à l'utilisateur s'il veut récupérer les rondes temporaires
-        const shouldRecover = window.confirm(
-          `Des rondes en cours ont été détectées (${tempRounds.length} ronde(s)). Voulez-vous les récupérer ?`
-        );
-        
-        if (shouldRecover) {
-          // Récupérer la première ronde temporaire (la plus récente)
-          const mostRecentTemp = tempRounds.sort((a, b) => 
-            b.roundData.startTime - a.roundData.startTime
-          )[0];
-          
-          console.log(`✅ Récupération de la ronde: ${mostRecentTemp.roundData.name}`);
-          
-          // Restaurer la ronde
-          setRoundData(mostRecentTemp.roundData);
-          setIsRecording(true);
-          setCurrentStepIndex(mostRecentTemp.roundData.steps.length - 1);
-          setCurrentStep(mostRecentTemp.roundData.steps.length - 1);
-          
-          // Supprimer la clé temporaire
-          localStorage.removeItem(mostRecentTemp.key);
-          
-          // Supprimer les autres rondes temporaires
-          tempRounds.forEach(temp => {
-            if (temp.key !== mostRecentTemp.key) {
-              localStorage.removeItem(temp.key);
-            }
-          });
-          
-          console.log('✅ Ronde récupérée avec succès');
-        } else {
-          // Supprimer toutes les rondes temporaires si l'utilisateur refuse
-          tempRounds.forEach(temp => {
-            localStorage.removeItem(temp.key);
-          });
-          console.log('🗑️ Rondes temporaires supprimées');
-        }
-      } else {
-        console.log('ℹ️ Aucune ronde temporaire trouvée');
+      // Essayer de charger depuis Supabase
+      const result = await loadRounds();
+      if (result && result.rounds && result.rounds.length > 0) {
+        // Convertir les données pour correspondre au type RoundData de roundStorage
+        const convertedRounds = result.rounds.map(round => ({
+          ...round,
+          isCompleted: (round as any).isCompleted || false
+        }));
+        setSavedRounds(convertedRounds);
       }
     } catch (error) {
-      console.error('❌ Erreur lors de la récupération des rondes temporaires:', error);
+      console.error('Erreur lors du chargement des rondes:', error);
     }
   };
 
-  const loadSitesData = async () => {
-    try {
-      const sitesData = await loadSites();
-      setSites(sitesData || []);
-    } catch (error) {
-      console.error('Erreur lors du chargement des sites:', error);
-    }
-  };
-
-  // 🚶‍♂️ SYSTÈME DE TIMER POUR CALCULER LA DISTANCE
-  useEffect(() => {
-    if (isRecording && timerEnabled) {
-      roundStartTime.current = Date.now();
-      startDistanceTimer();
-    } else {
-      stopDistanceTimer();
-    }
-    
-    return () => {
-      stopDistanceTimer();
-    };
-  }, [isRecording, timerEnabled]);
-
-  // Sauvegarde automatique périodique des rondes en cours
-  useEffect(() => {
-    let autoSaveInterval: NodeJS.Timeout;
-    
-    if (isRecording && roundData) {
-      // Sauvegarder automatiquement toutes les 30 secondes
-      autoSaveInterval = setInterval(async () => {
-        try {
-          console.log('⏰ Sauvegarde automatique périodique...');
-          const { success, error } = await saveRound(roundData);
-          if (success) {
-            console.log('✅ Sauvegarde automatique périodique réussie');
-          } else {
-            console.error('❌ Erreur sauvegarde automatique périodique:', error);
-            // Sauvegarde de secours locale
-            localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(roundData));
-          }
-        } catch (error) {
-          console.error('❌ Erreur sauvegarde automatique périodique:', error);
-          // Sauvegarde de secours locale
-          localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(roundData));
-        }
-      }, 30000); // 30 secondes
-    }
-    
-    return () => {
-      if (autoSaveInterval) {
-        clearInterval(autoSaveInterval);
-      }
-    };
-  }, [isRecording, roundData]);
-
-  // 🚶‍♂️ FONCTIONS POUR LE SYSTÈME DE TIMER ET CALCUL DE DISTANCE
-  
-  const calculateStepLength = (height: number): number => {
-    // Formule basée sur la taille : longueur de pas = 0.415 × taille en mètres
-    const heightInMeters = height / 100;
-    return 0.415 * heightInMeters;
+  const calculateStepLength = () => {
+    return userHeight * 0.43; // Formule standard
   };
 
   const startDistanceTimer = () => {
-    console.log('🚶‍♂️ Démarrage du timer de distance...');
-    const startTime = Date.now();
-    setWalkingStartTime(startTime);
-    setCurrentDistance(0);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
     
-    // Timer qui met à jour la distance toutes les secondes
-    timerInterval.current = setInterval(() => {
+    const startTime = Date.now();
+    setTimerEnabled(true);
+    
+    timerRef.current = setInterval(() => {
       const elapsedSeconds = (Date.now() - startTime) / 1000;
-      const speedInMs = (walkingSpeed * 1000) / 3600; // Convertir km/h en m/s
-      const distance = speedInMs * elapsedSeconds;
-      setCurrentDistance(distance);
-      
-      // Calculer le nombre de pas basé sur la distance
-      const stepLength = calculateStepLength(userHeight);
+      const distance = elapsedSeconds * walkingSpeed;
+      const stepLength = calculateStepLength();
       const steps = Math.floor(distance / stepLength);
-      setActualSteps(steps);
       
-      console.log(`🚶‍♂️ Distance: ${distance.toFixed(1)}m, Pas: ${steps}, Vitesse: ${walkingSpeed}km/h`);
-    }, 1000); // Mise à jour toutes les secondes
+      setCurrentDistance(distance);
+      setActualSteps(steps);
+    }, 1000);
   };
 
   const stopDistanceTimer = () => {
-    console.log('⏹️ Arrêt du timer de distance');
-    if (timerInterval.current) {
-      clearInterval(timerInterval.current);
-      timerInterval.current = null;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-    setWalkingStartTime(null);
+    setTimerEnabled(false);
   };
 
   const resetDistance = () => {
-    console.log('🔄 Reset de la distance');
     setCurrentDistance(0);
     setActualSteps(0);
-    // Redémarrer le timer si il était actif
-    if (timerEnabled && isRecording) {
+    if (timerEnabled) {
       stopDistanceTimer();
       startDistanceTimer();
-    }
-  };
-
-  const loadRoundsFromDatabase = async () => {
-    setIsLoading(true);
-    try {
-      // 🔍 CHARGER D'ABORD DEPUIS LOCALSTORAGE POUR ASSURER L'AFFICHAGE
-      const localRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
-      console.log('📦 Rondes chargées depuis localStorage:', localRounds.length);
-      setSavedRounds(localRounds);
-      
-      // Ensuite essayer de charger depuis Supabase
-      const { rounds, error } = await loadRounds();
-      if (error) {
-        console.error('Erreur lors du chargement des rondes depuis Supabase:', error);
-        console.log('📦 Utilisation des rondes localStorage:', localRounds.length);
-      } else {
-        console.log('✅ Rondes chargées depuis Supabase:', rounds.length);
-        setSavedRounds(rounds);
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement:', error);
-      // En cas d'erreur, utiliser localStorage
-      const localRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
-      setSavedRounds(localRounds);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const addStep = async (action: string, direction?: string, location?: string) => {
-    console.log(`🚀🚀🚀 addStep appelée avec: action=${action}, direction=${direction}`);
-    console.log(`🚀🚀🚀 ÉTAT COMPLET: isRecording=${isRecording}, roundData=${!!roundData}`);
-    
-    if (!isRecording) {
-      console.log(`❌❌❌ addStep annulée: isRecording=${isRecording}`);
-      return;
-    }
-
-    if (!roundData) {
-      console.log(`❌❌❌ addStep annulée: roundData est null`);
-      return;
-    }
-
-    console.log(`🔄 Ajout d'étape: ${action} ${direction || ''}`);
-    console.log(`🔄 roundData.steps avant:`, roundData.steps);
-
-    // ✅ VERSION ULTRA SIMPLIFIÉE ET ROBUSTE
-    const newStep: RoundStep = {
-      id: `step_${Date.now()}_${Math.random()}`,
-      timestamp: Date.now(),
-      action,
-      direction,
-      steps: 0, // Simplifié : pas de calcul complexe
-      location,
-      notes: ''
-    };
-
-    console.log(`📝 Nouvelle étape créée:`, newStep);
-
-    // ✅ MISE À JOUR DIRECTE ET SIMPLE
-    const updatedSteps = [...roundData.steps, newStep];
-    
-    const updatedRoundData = {
-      ...roundData,
-      steps: updatedSteps,
-      totalSteps: updatedSteps.length // Simplifié : totalSteps = nombre d'actions
-    };
-    
-    console.log(`📊 roundData.steps après:`, updatedRoundData.steps);
-    
-    // ✅ MISE À JOUR DE L'ÉTAT
-    setRoundData(updatedRoundData);
-    setCurrentStepIndex(updatedSteps.length - 1);
-    setCurrentStep(updatedSteps.length - 1);
-
-    // ✅ SAUVEGARDE IMMÉDIATE DANS LOCALSTORAGE
-    try {
-      const existingRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
-      const existingIndex = existingRounds.findIndex((r: any) => r.id === updatedRoundData.id);
-      
-      if (existingIndex >= 0) {
-        existingRounds[existingIndex] = updatedRoundData;
-      } else {
-        existingRounds.push(updatedRoundData);
-      }
-      
-      localStorage.setItem('carnet_securite_rounds', JSON.stringify(existingRounds));
-      console.log('💾 Ronde mise à jour dans localStorage');
-      
-      // Mettre à jour l'état local immédiatement
-      setSavedRounds(existingRounds);
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde localStorage:', error);
-    }
-
-    // Log détaillé pour le débogage
-    console.log(`✅ Étape ajoutée avec succès: ${action} ${direction || ''} - Total étapes: ${updatedSteps.length}`);
-    console.log('📋 Toutes les étapes actuelles:', updatedSteps.map((s, i) => `${i + 1}. ${s.action}`));
-  };
-
-  const validateStep = () => {
-    setIsStepValidated(true);
-    setShowStepValidation(false);
-    setActualSteps(0); // Reset pour la prochaine étape
-  };
-
-  const goToPreviousStep = () => {
-    if (roundData && currentStepIndex > 0) {
-      const newIndex = currentStepIndex - 1;
-      setCurrentStepIndex(newIndex);
-      const prevStep = roundData.steps[newIndex];
-      if (prevStep) {
-        setStepCount(prevStep.steps);
-        stepCountRef.current = prevStep.steps;
-        setCurrentStep(newIndex);
-        console.log(`Navigation vers étape ${newIndex + 1}: ${prevStep.action}`);
-      }
-    }
-  };
-
-  const goToNextStep = () => {
-    if (roundData && currentStepIndex < roundData.steps.length - 1) {
-      const newIndex = currentStepIndex + 1;
-      setCurrentStepIndex(newIndex);
-      const nextStep = roundData.steps[newIndex];
-      if (nextStep) {
-        setStepCount(nextStep.steps);
-        stepCountRef.current = nextStep.steps;
-        setCurrentStep(newIndex);
-        console.log(`Navigation vers étape ${newIndex + 1}: ${nextStep.action}`);
-      }
     }
   };
 
@@ -452,18 +151,74 @@ export const RoundTracking: React.FC = () => {
     
     setRoundData(newRound);
     setIsRecording(true);
-    setCurrentStep(0);
-    setCurrentStepIndex(0);
-    stepCountRef.current = 0;
-    setStepCount(0);
     setActualSteps(0);
-    setExpectedSteps(0);
-    setIsStepValidated(false);
-    setShowStepValidation(false);
     setCurrentDistance(0);
-    setWalkingStartTime(null);
     
     console.log('✅ Ronde démarrée - isRecording=true, roundData initialisé');
+  };
+
+  const addStep = async (action: string, direction?: string, location?: string) => {
+    console.log(`🚀🚀🚀 addStep appelée avec: action=${action}, direction=${direction}`);
+    console.log(`🚀🚀🚀 ÉTAT COMPLET: isRecording=${isRecording}, roundData=${!!roundData}`);
+    
+    if (!isRecording) {
+      console.log(`❌❌❌ addStep annulée: isRecording=${isRecording}`);
+      return;
+    }
+
+    if (!roundData) {
+      console.log(`❌❌❌ addStep annulée: roundData est null`);
+      return;
+    }
+
+    console.log(`🔄 Ajout d'étape: ${action} ${direction || ''}`);
+    console.log(`🔄 roundData.steps avant:`, roundData.steps);
+
+    const newStep = {
+      id: `step_${Date.now()}_${Math.random()}`,
+      timestamp: Date.now(),
+      action,
+      direction,
+      steps: customExpectedSteps || 0,
+      location,
+      notes: ''
+    };
+
+    console.log(`📝 Nouvelle étape créée:`, newStep);
+
+    const updatedSteps = [...roundData.steps, newStep];
+    
+    const updatedRoundData = {
+      ...roundData,
+      steps: updatedSteps,
+      totalSteps: updatedSteps.length
+    };
+    
+    console.log(`📊 roundData.steps après:`, updatedRoundData.steps);
+    
+    setRoundData(updatedRoundData);
+
+    // Sauvegarde immédiate dans localStorage
+    try {
+      const existingRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+      const existingIndex = existingRounds.findIndex((r: any) => r.id === updatedRoundData.id);
+      
+      if (existingIndex >= 0) {
+        existingRounds[existingIndex] = updatedRoundData;
+      } else {
+        existingRounds.push(updatedRoundData);
+      }
+      
+      localStorage.setItem('carnet_securite_rounds', JSON.stringify(existingRounds));
+      console.log('💾 Ronde mise à jour dans localStorage');
+      
+      setSavedRounds(existingRounds);
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde localStorage:', error);
+    }
+
+    console.log(`✅ Étape ajoutée avec succès: ${action} ${direction || ''} - Total étapes: ${updatedSteps.length}`);
+    console.log('📋 Toutes les étapes actuelles:', updatedSteps.map((s, i) => `${i + 1}. ${s.action}`));
   };
 
   const stopRound = async () => {
@@ -487,65 +242,51 @@ export const RoundTracking: React.FC = () => {
     console.log('🛑 Nombre d\'actions:', completedRound.steps.length);
     console.log('🛑 Actions détaillées:', completedRound.steps.map((s, i) => `${i + 1}. ${s.action}`));
       
-      console.log('💾 Sauvegarde de la ronde:', {
-        name: completedRound.name,
-        totalSteps: completedRound.totalSteps,
-        stepsCount: completedRound.steps.length,
-        steps: completedRound.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`)
-      });
+    console.log('💾 Sauvegarde de la ronde:', {
+      name: completedRound.name,
+      totalSteps: completedRound.totalSteps,
+      stepsCount: completedRound.steps.length,
+      steps: completedRound.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`)
+    });
+    
+    try {
+      // Sauvegarde immédiate dans localStorage
+      const existingRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+      const existingIndex = existingRounds.findIndex((r: any) => r.id === completedRound.id);
       
-      // Sauvegarder en base de données
-      setIsLoading(true);
-      try {
-        // 💾 SAUVEGARDE IMMÉDIATE DANS LOCALSTORAGE
-        const existingRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
-        const existingIndex = existingRounds.findIndex((r: any) => r.id === completedRound.id);
-        
-        if (existingIndex >= 0) {
-          existingRounds[existingIndex] = completedRound;
-        } else {
-          existingRounds.push(completedRound);
-        }
-        
-        localStorage.setItem('carnet_securite_rounds', JSON.stringify(existingRounds));
-        console.log('💾 Ronde sauvegardée dans localStorage');
-        
-        // Mettre à jour l'état local immédiatement
-        setSavedRounds(existingRounds);
-        
-        // Essayer de sauvegarder dans Supabase
-        const { success, error } = await saveRound(completedRound);
-        if (success) {
-          console.log('✅ Ronde sauvegardée avec succès dans Supabase');
-        } else {
-          console.error('❌ Erreur lors de la sauvegarde Supabase:', error);
-          console.log('💾 Mais la ronde est sauvegardée dans localStorage');
-        }
-        
-        // Recharger les rondes depuis la base
-        await loadRoundsFromDatabase();
-      } catch (error) {
-        console.error('❌ Erreur lors de la sauvegarde:', error);
-        // En cas d'erreur totale, au moins on a localStorage
-      } finally {
-        setIsLoading(false);
+      if (existingIndex >= 0) {
+        existingRounds[existingIndex] = completedRound;
+      } else {
+        existingRounds.push(completedRound);
       }
       
-      setRoundData(null);
+      localStorage.setItem('carnet_securite_rounds', JSON.stringify(existingRounds));
+      console.log('💾 Ronde sauvegardée dans localStorage');
+      
+      setSavedRounds(existingRounds);
+      
+      // Essayer de sauvegarder dans Supabase
+      const { success, error } = await saveRound(completedRound);
+      if (success) {
+        console.log('✅ Ronde sauvegardée avec succès dans Supabase');
+      } else {
+        console.error('❌ Erreur lors de la sauvegarde Supabase:', error);
+        console.log('💾 Mais la ronde est sauvegardée dans localStorage');
+      }
+      
+      await loadRoundsFromDatabase();
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde:', error);
     }
-    
+      
+    setRoundData(null);
     setIsRecording(false);
-    setCurrentStep(0);
     stepCountRef.current = 0;
-    setStepCount(0);
     stopDistanceTimer();
   };
 
   const replayRound = (round: RoundData) => {
     setRoundData(round);
-    setIsReplaying(true);
-    setReplayIndex(0);
-    setCurrentStep(0);
   };
 
   const startGPSReplay = (round: RoundData) => {
@@ -559,20 +300,6 @@ export const RoundTracking: React.FC = () => {
     setSelectedRound(null);
   };
 
-  const nextReplayStep = () => {
-    if (!roundData || replayIndex >= roundData.steps.length) {
-      setIsReplaying(false);
-      setReplayIndex(0);
-      return;
-    }
-
-    const step = roundData.steps[replayIndex];
-    setCurrentStep(replayIndex);
-    setReplayIndex(prev => prev + 1);
-    
-    // Simulation de l'action
-    console.log(`Replay: ${step.action} ${step.direction || ''} - ${step.steps} pas`);
-  };
 
   const formatDuration = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
@@ -599,433 +326,190 @@ export const RoundTracking: React.FC = () => {
           <h2 className="text-lg font-bold text-white flex items-center">
             <Navigation className="h-5 w-5 mr-2" />
             Suivi de Ronde
-            {isRecording && (
-              <span className="ml-2 px-2 py-1 bg-red-600 text-white text-xs rounded-full animate-pulse">
-                REC
-              </span>
-            )}
           </h2>
-          <button
-            onClick={() => setShowRounds(!showRounds)}
-            className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
-          >
-            <Map className="h-4 w-4 mr-1 inline" />
-            {savedRounds.length}
-          </button>
-        </div>
-      </div>
-
-      {/* Statistiques compactes */}
-      <div className="grid grid-cols-4 gap-1 p-2 bg-gray-800 flex-shrink-0">
-        <div className="bg-gray-700 rounded p-1.5 text-center">
-          <Navigation className="h-3 w-3 text-blue-400 mx-auto mb-0.5" />
-          <div className="text-xs font-bold text-white">{stepCount}</div>
-          <div className="text-xs text-gray-400">Étapes</div>
-        </div>
-        
-        <div className="bg-gray-700 rounded p-1.5 text-center">
-          <Clock className="h-3 w-3 text-green-400 mx-auto mb-0.5" />
-          <div className="text-xs font-bold text-white">
-            {isRecording ? formatDuration(Date.now() - (roundData?.startTime || 0)) : '00:00'}
-          </div>
-          <div className="text-xs text-gray-400">Durée</div>
-        </div>
-        
-        <div className="bg-gray-700 rounded p-1.5 text-center">
-          <Target className="h-3 w-3 text-red-400 mx-auto mb-0.5" />
-          <div className="text-xs font-bold text-white">{roundData?.steps.length || 0}</div>
-          <div className="text-xs text-gray-400">Actions</div>
-        </div>
-        
-        <div className="bg-gray-700 rounded p-1.5 text-center">
-          <Footprints className="h-3 w-3 text-purple-400 mx-auto mb-0.5" />
-          <div className="text-xs font-bold text-white">{actualSteps}</div>
-          <div className="text-xs text-gray-400">Pas</div>
-        </div>
-      </div>
-
-      {/* Debug Info */}
-      <div className="bg-gray-800 p-2 text-xs text-gray-400 flex-shrink-0">
-        <div className="flex justify-between">
-          <span>Recording: {isRecording ? 'OUI' : 'NON'}</span>
-          <span>RoundData: {roundData ? 'OUI' : 'NON'}</span>
-          <span>Steps: {roundData?.steps.length || 0}</span>
-        </div>
-        {isRecording && timerEnabled && (
-          <div className="mt-1">
-            <span>Timer: {timerEnabled ? '✅ ACTIF' : '❌ INACTIF'} | Distance: {currentDistance.toFixed(1)}m | Pas: {actualSteps}</span>
-          </div>
-        )}
-        {isRecording && (
-          <div className="mt-2 space-x-2">
+          <div className="flex items-center space-x-2">
             <button
-              onClick={() => {
-                console.log('🧪 TEST: Ajout d\'une action de test');
-                addStep('TEST', 'test');
-              }}
-              className="px-2 py-1 bg-red-600 text-white text-xs rounded"
+              onClick={() => setShowRounds(!showRounds)}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
             >
-              🧪 Test Action
+              Rondes
             </button>
-            <button
-              onClick={() => {
-                console.log('🧪 TEST: Ajout Droite');
-                addStep('Droite', 'right');
-              }}
-              className="px-2 py-1 bg-blue-600 text-white text-xs rounded"
-            >
-              🧪 Test Droite
-            </button>
-            <button
-              onClick={() => {
-                console.log('🧪 TEST: Ajout Gauche');
-                addStep('Gauche', 'left');
-              }}
-              className="px-2 py-1 bg-green-600 text-white text-xs rounded"
-            >
-              🧪 Test Gauche
-            </button>
-            <button
-              onClick={() => {
-                console.log('🧪 TEST: Rechargement des rondes');
-                loadRoundsFromDatabase();
-              }}
-              className="px-2 py-1 bg-purple-600 text-white text-xs rounded"
-            >
-              🔄 Recharger
-            </button>
-            <button
-              onClick={() => {
-                console.log('🧪 TEST: Vérification de l\'état');
-                console.log('🧪 isRecording:', isRecording);
-                console.log('🧪 roundData:', roundData);
-                console.log('🧪 roundData.steps:', roundData?.steps);
-                console.log('🧪 savedRounds:', savedRounds);
-              }}
-              className="px-2 py-1 bg-orange-600 text-white text-xs rounded"
-            >
-              🔍 État
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Affichage de l'étape actuelle - Version ultra compacte */}
-      {isRecording && roundData && roundData.steps.length > 0 && (
-        <div className="p-1 bg-gray-800 border-b border-gray-700 flex-shrink-0">
-          <div className="bg-gray-700 rounded p-1.5">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-xs font-semibold text-white">
-                Étape {currentStepIndex + 1}/{roundData.steps.length}
-              </h3>
-              <div className="flex space-x-1">
-                <button
-                  onClick={goToPreviousStep}
-                  disabled={currentStepIndex === 0}
-                  className="p-0.5 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
-                  title="Étape précédente"
-                >
-                  <ArrowLeft className="h-3 w-3" />
-                </button>
-                <button
-                  onClick={goToNextStep}
-                  disabled={currentStepIndex >= roundData.steps.length - 1}
-                  className="p-0.5 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
-                  title="Étape suivante"
-                >
-                  <ArrowRight className="h-3 w-3" />
-                </button>
-              </div>
-            </div>
-            
-            <div className="text-white text-xs font-medium mb-1">
-              {roundData.steps[currentStepIndex]?.action}
-              {roundData.steps[currentStepIndex]?.direction && 
-                ` - ${roundData.steps[currentStepIndex]?.direction}`
-              }
-            </div>
-            
-            {/* Validation des pas - Version ultra compacte */}
-            {showStepValidation && showValidationPanel && (
-              <div className="mt-1 pt-1 border-t border-gray-600">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400">Pas: {actualSteps}/{expectedSteps}</span>
-                  <div className="flex items-center space-x-1">
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={expectedSteps}
-                      onChange={(e) => setExpectedSteps(parseInt(e.target.value) || 1)}
-                      className="w-8 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 focus:border-blue-500 focus:outline-none text-center text-xs"
-                    />
-                    {actualSteps >= expectedSteps && (
-                      <button
-                        onClick={validateStep}
-                        className="px-1 py-0.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs transition-colors"
-                        title="Valider l'étape"
-                      >
-                        ✓
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setShowValidationPanel(false)}
-                      className="px-1 py-0.5 bg-gray-600 hover:bg-gray-500 text-white rounded text-xs transition-colors"
-                      title="Masquer la validation"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
+            {roundData && (
+              <div className="text-white text-sm">
+                {roundData.steps.length} actions
               </div>
             )}
-
-            {/* Informations de l'étape - Version ultra compacte */}
-            <div className="mt-1 pt-1 border-t border-gray-600 text-xs text-gray-400 flex justify-between">
-              <span>{new Date(roundData.steps[currentStepIndex]?.timestamp || 0).toLocaleTimeString()}</span>
-              <div className="flex items-center space-x-2">
-                <span>#{roundData.steps[currentStepIndex]?.steps}</span>
-                {showStepValidation && !showValidationPanel && (
-                  <button
-                    onClick={() => setShowValidationPanel(true)}
-                    className="px-1 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition-colors"
-                    title="Afficher la validation des pas"
-                  >
-                    Pas
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Sélection du site et notes (avant de commencer) - Version compacte */}
-      {!isRecording && (
-        <div className="p-2 bg-gray-800 border-b border-gray-700 flex-shrink-0 space-y-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {/* Contenu principal */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {/* Section de contrôle de la ronde */}
+        <div className="bg-gray-800 p-4 border-b border-gray-700">
+          <div className="space-y-3">
+            {/* Sélection du site */}
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">
-                Site (optionnel)
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Site
               </label>
               <select
                 value={selectedSiteId}
                 onChange={(e) => setSelectedSiteId(e.target.value)}
-                className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isRecording}
               >
-                <option value="">Sélectionner...</option>
-                {sites.map(site => (
-                  <option key={site.id} value={site.id}>{site.name}</option>
+                <option value="">Sélectionner un site</option>
+                {sites.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
                 ))}
               </select>
             </div>
-            
+
+            {/* Notes de la ronde */}
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">
-                Pas attendus par action
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Notes de la ronde
               </label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={customExpectedSteps}
-                onChange={(e) => setCustomExpectedSteps(parseInt(e.target.value) || 1)}
-                className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
-                placeholder="1"
+              <textarea
+                value={roundNotes}
+                onChange={(e) => setRoundNotes(e.target.value)}
+                placeholder="Notes optionnelles..."
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isRecording}
+                rows={2}
               />
             </div>
+
+            {/* Contrôles de la ronde */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {!isRecording ? (
+                  <button
+                    onClick={startRound}
+                    className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-medium"
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Démarrer
+                  </button>
+                ) : (
+                  <button
+                    onClick={stopRound}
+                    className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium"
+                  >
+                    <Square className="h-4 w-4 mr-2" />
+                    Arrêter
+                  </button>
+                )}
+              </div>
+              
+              {isRecording && (
+                <div className="text-white text-sm">
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></div>
+                    Enregistrement en cours
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          
-          {/* 🚶‍♂️ Paramètres de marche */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        </div>
+
+        {/* Section timer et distance */}
+        <div className="bg-gray-800 p-4 border-b border-gray-700">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Taille (cm)
               </label>
               <input
                 type="number"
-                min="120"
-                max="220"
                 value={userHeight}
-                onChange={(e) => setUserHeight(parseInt(e.target.value) || 175)}
-                className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
-                placeholder="175"
+                onChange={(e) => setUserHeight(parseInt(e.target.value))}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <div className="text-xs text-gray-400 mt-1">
-                Longueur de pas: {calculateStepLength(userHeight).toFixed(2)}m
-              </div>
             </div>
-            
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">
-                Vitesse de marche (km/h)
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Vitesse (m/s)
               </label>
               <input
                 type="number"
-                min="1"
-                max="10"
-                step="0.5"
+                step="0.1"
                 value={walkingSpeed}
-                onChange={(e) => setWalkingSpeed(parseFloat(e.target.value) || 5.0)}
-                className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
-                placeholder="5.0"
+                onChange={(e) => setWalkingSpeed(parseFloat(e.target.value))}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <div className="text-xs text-gray-400 mt-1">
-                {walkingSpeed} km/h = {(walkingSpeed * 1000 / 3600).toFixed(2)} m/s
-              </div>
             </div>
           </div>
           
-          <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1">
-              Notes (optionnel)
-            </label>
-            <textarea
-              value={roundNotes}
-              onChange={(e) => setRoundNotes(e.target.value)}
-              placeholder="Notes sur cette ronde..."
-              className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none resize-none text-sm"
-              rows={1}
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="disableValidation"
-              checked={!showValidationPanel}
-              onChange={(e) => setShowValidationPanel(!e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-            />
-            <label htmlFor="disableValidation" className="text-xs text-gray-300">
-              Désactiver la validation des pas
-            </label>
-          </div>
-        </div>
-      )}
-
-      {/* Contrôles principaux - Version compacte */}
-      <div className="p-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
-        <div className="flex space-x-2 mb-2">
-          {!isRecording ? (
-            <button
-              onClick={startRound}
-              disabled={isLoading}
-              className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm"
-            >
-              <Play className="h-4 w-4 mr-1" />
-              Démarrer
-            </button>
-          ) : (
-            <button
-              onClick={stopRound}
-              disabled={isLoading}
-              className="flex-1 flex items-center justify-center px-3 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm"
-            >
-              {isLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-1"></div>
-              ) : (
-                <Square className="h-4 w-4 mr-1" />
-              )}
-              {isLoading ? 'Sauvegarde...' : 'Arrêter'}
-            </button>
-          )}
-          
-          {isReplaying && (
-            <button
-              onClick={nextReplayStep}
-              className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm"
-            >
-              <RotateCcw className="h-4 w-4 mr-1" />
-              Suivant
-            </button>
-          )}
-        </div>
-        
-        {/* 🚶‍♂️ Contrôle du timer de distance - Version compacte */}
-        {isRecording && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setTimerEnabled(!timerEnabled)}
-                className={`flex items-center px-3 py-1 rounded transition-colors text-xs font-medium ${
-                  timerEnabled 
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
-                }`}
-              >
-                <Clock className="h-3 w-3 mr-1" />
-                {timerEnabled ? 'ON' : 'OFF'}
-              </button>
-              
-              {/* Indicateur de statut */}
-              <div className={`w-2 h-2 rounded-full ${
-                timerEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
-              }`} title={timerEnabled ? 'Timer actif' : 'Timer inactif'} />
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="text-white text-sm">
+                Distance: {currentDistance.toFixed(1)}m
+              </div>
+              <div className="text-white text-sm">
+                Pas estimés: {actualSteps}
+              </div>
             </div>
             
-            {/* Affichage de la distance et des pas - Version compacte */}
-            {timerEnabled && (
-              <div className="flex space-x-2">
-                <div className="bg-gray-700 rounded px-2 py-1 text-center">
-                  <div className="text-sm font-bold text-white">{currentDistance.toFixed(1)}m</div>
-                  <div className="text-xs text-gray-400">Distance</div>
-                </div>
-                <div className="bg-gray-700 rounded px-2 py-1 text-center">
-                  <div className="text-sm font-bold text-white">{actualSteps}</div>
-                  <div className="text-xs text-gray-400">Pas</div>
-                </div>
+            <div className="flex items-center space-x-2">
+              {!timerEnabled ? (
                 <button
-                  onClick={resetDistance}
-                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs"
-                  title="Reset distance"
+                  onClick={startDistanceTimer}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
                 >
-                  🔄
+                  Démarrer Timer
                 </button>
-              </div>
-            )}
+              ) : (
+                <button
+                  onClick={stopDistanceTimer}
+                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+                >
+                  Arrêter Timer
+                </button>
+              )}
+              <button
+                onClick={resetDistance}
+                className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm"
+              >
+                Reset
+              </button>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Pad de navigation - Optimisé mobile */}
-      <div className="flex-1 p-2 overflow-y-auto">
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          {navigationButtons.map((button, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                console.log(`🔘🔘🔘 BOUTON CLIQUÉ: ${button.action} ${button.direction || ''}`);
-                console.log(`🔘🔘🔘 ÉTAT: isRecording=${isRecording}, roundData=${!!roundData}`);
-                console.log(`🔘🔘🔘 roundData.steps.length=${roundData?.steps.length || 0}`);
-                addStep(button.action, button.direction);
-              }}
-              disabled={!isRecording}
-              className={`${button.color} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-lg transition-all transform active:scale-95 flex flex-col items-center space-y-1 min-h-[60px] shadow-lg`}
-            >
-              <button.icon className="h-5 w-5" />
-              <span className="text-xs font-medium text-center">{button.action}</span>
-            </button>
-          ))}
         </div>
 
-        {/* Log des actions - Version compacte */}
+        {/* Boutons d'actions */}
+        {isRecording && (
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="grid grid-cols-2 gap-3">
+              {navigationButtons.map((button, index) => {
+                const IconComponent = button.icon;
+                return (
+                  <button
+                    key={index}
+                    onClick={() => addStep(button.action, button.direction)}
+                    className={`${button.color} hover:opacity-90 text-white p-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200`}
+                  >
+                    <IconComponent className="h-6 w-6" />
+                    <span className="font-medium">{button.action}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Affichage des étapes en cours */}
         {isRecording && roundData && roundData.steps.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-2">
-            <h3 className="text-xs font-semibold text-white mb-1 flex items-center">
-              <Clock className="h-3 w-3 mr-1" />
-              Dernières Actions
-            </h3>
-            <div className="space-y-1 max-h-20 overflow-y-auto">
-              {roundData.steps.slice(-3).map((step) => (
-                <div key={step.id} className="flex items-center justify-between text-xs bg-gray-700 rounded px-2 py-1">
-                  <div className="flex items-center space-x-1">
-                    <span className="text-blue-400 font-medium">{step.action}</span>
-                    {step.direction && <span className="text-gray-500">- {step.direction}</span>}
-                  </div>
-                  <div className="text-gray-400">
-                    {step.steps}
-                  </div>
+          <div className="bg-gray-800 p-4 border-t border-gray-700">
+            <h3 className="text-white font-medium mb-2">Actions enregistrées:</h3>
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              {roundData.steps.map((step, index) => (
+                <div key={step.id} className="text-gray-300 text-sm">
+                  {index + 1}. {step.action} {step.direction ? `(${step.direction})` : ''}
                 </div>
               ))}
             </div>
@@ -1033,40 +517,42 @@ export const RoundTracking: React.FC = () => {
         )}
       </div>
 
-      {/* Historique des rondes - Modal mobile */}
+      {/* Panneau des rondes */}
       {showRounds && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-end">
-          <div className="bg-gray-800 w-full max-h-[80vh] rounded-t-xl">
-            <div className="p-4 border-b border-gray-700">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">Rondes Enregistrées</h3>
-                <button
-                  onClick={() => setShowRounds(false)}
-                  className="text-gray-400 hover:text-white p-2"
-                >
-                  ✕
-                </button>
-              </div>
+        <div className="absolute inset-0 bg-gray-900 bg-opacity-95 z-50 overflow-y-auto">
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Gestion des Rondes</h2>
+              <button
+                onClick={() => setShowRounds(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
             </div>
-            <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
+            
+            <div className="space-y-3">
               {savedRounds.length === 0 ? (
-                <div className="text-center text-gray-400 py-8">
+                <div className="text-gray-400 text-center py-8">
                   Aucune ronde enregistrée
                 </div>
               ) : (
                 savedRounds.map((round) => (
-                  <div key={round.id} className="bg-gray-700 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="text-white font-medium text-sm">{round.name}</div>
-                      <div className="flex space-x-1">
+                  <div key={round.id} className="bg-gray-800 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-white font-medium">{round.name}</h3>
+                        <div className="text-xs text-gray-400 mt-1">
+                          <div>{round.totalSteps} pas • {round.steps.length} actions</div>
+                          <div>{round.duration ? formatDuration(round.duration) : 'En cours'}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => {
-                            startGPSReplay(round);
-                          }}
-                          className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center space-x-1"
+                          onClick={() => startGPSReplay(round)}
+                          className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs"
                         >
-                          <Navigation className="h-3 w-3" />
-                          <span>GPS</span>
+                          GPS
                         </button>
                         <button
                           onClick={() => {
@@ -1078,10 +564,6 @@ export const RoundTracking: React.FC = () => {
                           Rejouer
                         </button>
                       </div>
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      <div>{round.totalSteps} pas • {round.steps.length} actions</div>
-                      <div>{round.duration ? formatDuration(round.duration) : 'En cours'}</div>
                     </div>
                   </div>
                 ))
