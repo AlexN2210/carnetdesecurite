@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, LogOut, User, Navigation } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, User, Navigation, Map } from 'lucide-react';
 import { Header } from './components/Header';
 import { SiteCard } from './components/SiteCard';
 import { SiteForm } from './components/SiteForm';
@@ -8,6 +8,7 @@ import { PWADownloadButton } from './components/PWADownloadButton';
 import { RoundTracking } from './components/RoundTracking';
 import { RoundsManager } from './components/RoundsManager';
 import { LoadingScreen } from './components/LoadingScreen';
+import { DebugPanel } from './components/DebugPanel';
 import { Site, AppState } from './types';
 import { loadSites, saveSites } from './utils/hybridStorage';
 import { generateId } from './utils/crypto';
@@ -19,9 +20,11 @@ function App() {
     isLocked: true,
     searchQuery: '',
     showSensitiveData: false,
+    rounds: [],
+    selectedSite: null,
   });
   const [showSiteForm, setShowSiteForm] = useState(false);
-  const [editingSite, setEditingSite] = useState<Site | null>(null);
+  const [editingSite, setEditingSite] = useState<Site | undefined>(undefined);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showRoundTracking, setShowRoundTracking] = useState(false);
   const [showRoundsManager, setShowRoundsManager] = useState(false);
@@ -30,29 +33,58 @@ function App() {
   const [isLoadingSites, setIsLoadingSites] = useState(false);
 
   useEffect(() => {
-    // Écouter les changements d'état d'authentification
-    const { data: { subscription } } = onAuthStateChange((user) => {
-      setUser(user);
-      setState(prev => ({ 
-        ...prev, 
-        isLocked: !user
-      }));
-      setIsLoading(false);
-    });
-
+    let isMounted = true;
+    
     // Fallback de sécurité pour éviter un écran blanc permanent
     const fallbackTimeout = setTimeout(() => {
-      if (isLoading) {
-        console.log('Fallback: Déverrouillage automatique après 3 secondes');
+      if (isLoading && isMounted) {
+        console.log('Fallback: Déverrouillage automatique après 5 secondes');
         setIsLoading(false);
       }
-    }, 3000);
+    }, 5000);
+
+    // Écouter les changements d'état d'authentification
+    const { data: { subscription } } = onAuthStateChange((user) => {
+      if (isMounted) {
+        console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
+        setUser(user);
+        setState(prev => ({ 
+          ...prev, 
+          isLocked: !user
+        }));
+        setIsLoading(false);
+      }
+    });
+
+    // Initialisation immédiate pour éviter l'écran blanc
+    const initAuth = async () => {
+      try {
+        const { user: currentUser } = await getCurrentUser();
+        if (isMounted) {
+          console.log('Initial auth check:', currentUser ? 'User found' : 'No user');
+          setUser(currentUser);
+          setState(prev => ({ 
+            ...prev, 
+            isLocked: !currentUser
+          }));
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initAuth();
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
       clearTimeout(fallbackTimeout);
     };
-  }, [isLoading]);
+  }, []);
 
   useEffect(() => {
     // Charger les sites quand l'utilisateur est connecté
@@ -137,7 +169,7 @@ function App() {
     setState(prev => ({ ...prev, sites: newSites }));
     await saveSites(newSites);
     setShowSiteForm(false);
-    setEditingSite(null);
+    setEditingSite(undefined);
   };
 
   const handleEditSite = (site: Site) => {
@@ -296,7 +328,7 @@ function App() {
           onSave={handleSaveSite}
           onCancel={() => {
             setShowSiteForm(false);
-            setEditingSite(null);
+            setEditingSite(undefined);
           }}
         />
       )}
@@ -338,6 +370,7 @@ function App() {
       )}
 
       <PWADownloadButton />
+      <DebugPanel />
     </div>
   );
 }

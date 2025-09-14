@@ -117,14 +117,24 @@ export const onAuthStateChange = (callback: (user: any) => void) => {
   // Ajouter le callback à la liste
   authListeners.push(callback);
   
-  // Écouter les changements d'état Supabase
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    if (session?.user) {
-      notifyListeners(session.user);
-    } else {
-      notifyListeners(null);
-    }
-  });
+  let subscription: any = null;
+  
+  try {
+    // Écouter les changements d'état Supabase
+    const { data: { subscription: supabaseSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Supabase auth event:', event, session?.user ? 'User present' : 'No user');
+      if (session?.user) {
+        notifyListeners(session.user);
+      } else {
+        notifyListeners(null);
+      }
+    });
+    subscription = supabaseSubscription;
+  } catch (error) {
+    console.error('Error setting up auth listener:', error);
+    // En cas d'erreur, appeler immédiatement le callback avec l'utilisateur actuel
+    setTimeout(() => callback(currentUser), 100);
+  }
   
   // Appeler immédiatement avec l'utilisateur actuel
   callback(currentUser);
@@ -138,7 +148,9 @@ export const onAuthStateChange = (callback: (user: any) => void) => {
           if (index > -1) {
             authListeners.splice(index, 1);
           }
-          subscription.unsubscribe();
+          if (subscription) {
+            subscription.unsubscribe();
+          }
         }
       }
     }
