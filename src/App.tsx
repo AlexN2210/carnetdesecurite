@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, LogOut, User } from 'lucide-react';
+import { Plus, LogOut, User, Navigation } from 'lucide-react';
 import { Header } from './components/Header';
 import { SiteCard } from './components/SiteCard';
 import { SiteForm } from './components/SiteForm';
 import { AuthModal } from './components/AuthModal';
 import { PWADownloadButton } from './components/PWADownloadButton';
+import { RoundTracking } from './components/RoundTracking';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Site, AppState } from './types';
 import { loadSites, saveSites } from './utils/supabaseStorage';
@@ -21,6 +22,7 @@ function App() {
   const [showSiteForm, setShowSiteForm] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showRoundTracking, setShowRoundTracking] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSites, setIsLoadingSites] = useState(false);
@@ -207,13 +209,23 @@ function App() {
             </p>
           </div>
           
-          <button
-            onClick={() => setShowSiteForm(true)}
-            className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Nouveau site</span>
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setShowRoundTracking(true)}
+              className="flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg"
+            >
+              <Navigation className="h-5 w-5" />
+              <span>Suivi de Ronde</span>
+            </button>
+            
+            <button
+              onClick={() => setShowSiteForm(true)}
+              className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg"
+            >
+              <Plus className="h-5 w-5" />
+              <span>Nouveau site</span>
+            </button>
+          </div>
         </div>
 
         {filteredSites.length === 0 ? (
@@ -261,6 +273,25 @@ function App() {
             setEditingSite(null);
           }}
         />
+      )}
+
+      {showRoundTracking && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b border-gray-700">
+              <h2 className="text-2xl font-bold text-white">Suivi de Ronde</h2>
+              <button
+                onClick={() => setShowRoundTracking(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <RoundTracking />
+            </div>
+          </div>
+        </div>
       )}
 
       <PWADownloadButton />

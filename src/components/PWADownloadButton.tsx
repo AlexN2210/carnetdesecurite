@@ -249,29 +249,28 @@ export const PWADownloadButton: React.FC = () => {
     }
   };
 
-  // Debug : toujours afficher le bouton pour tester
-  console.log('PWA Button State:', { isInstalled, deferredPrompt: !!deferredPrompt });
+  // Ne pas afficher si déjà installée
+  if (isInstalled) {
+    return null;
+  }
 
   return (
-    <div className="bg-red-500 p-1 text-white text-xs">
-      PWA BTN
-      <button
-        onClick={handleInstallClick}
-        disabled={isInstalling}
-        className="ml-2 flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors shadow-lg text-sm font-medium"
-      >
-        {isInstalling ? (
-          <>
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-            <span>Installation...</span>
-          </>
-        ) : (
-          <>
-            <Download className="h-4 w-4" />
-            <span>Installer l'app</span>
-          </>
-        )}
-      </button>
-    </div>
+    <button
+      onClick={handleInstallClick}
+      disabled={isInstalling}
+      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors shadow-lg text-sm font-medium"
+    >
+      {isInstalling ? (
+        <>
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+          <span>Installation...</span>
+        </>
+      ) : (
+        <>
+          <Download className="h-4 w-4" />
+          <span>Installer l'app</span>
+        </>
+      )}
+    </button>
   );
 };
