@@ -6,6 +6,7 @@ import {
   Navigation, Footprints, Clock, Map
 } from 'lucide-react';
 import { saveRound, loadRounds, deleteRound, RoundData } from '../utils/hybridStorage';
+import { GPSReplay } from './GPSReplay';
 
 // Types pour l'accéléromètre
 interface DeviceMotionEvent extends Event {
@@ -47,6 +48,8 @@ export const RoundTracking: React.FC = () => {
   const [replayIndex, setReplayIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [pedometerEnabled, setPedometerEnabled] = useState(false);
+  const [showGPSReplay, setShowGPSReplay] = useState(false);
+  const [selectedRound, setSelectedRound] = useState<RoundData | null>(null);
   
   const stepCountRef = useRef(0);
   const roundStartTime = useRef<number>(0);
@@ -238,6 +241,17 @@ export const RoundTracking: React.FC = () => {
     setIsReplaying(true);
     setReplayIndex(0);
     setCurrentStep(0);
+  };
+
+  const startGPSReplay = (round: RoundData) => {
+    setSelectedRound(round);
+    setShowGPSReplay(true);
+    setShowRounds(false);
+  };
+
+  const closeGPSReplay = () => {
+    setShowGPSReplay(false);
+    setSelectedRound(null);
   };
 
   const nextReplayStep = () => {
@@ -454,15 +468,26 @@ export const RoundTracking: React.FC = () => {
                   <div key={round.id} className="bg-gray-700 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-white font-medium text-sm">{round.name}</div>
-                      <button
-                        onClick={() => {
-                          replayRound(round);
-                          setShowRounds(false);
-                        }}
-                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs"
-                      >
-                        Rejouer
-                      </button>
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => {
+                            startGPSReplay(round);
+                          }}
+                          className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center space-x-1"
+                        >
+                          <Navigation className="h-3 w-3" />
+                          <span>GPS</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            replayRound(round);
+                            setShowRounds(false);
+                          }}
+                          className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs"
+                        >
+                          Rejouer
+                        </button>
+                      </div>
                     </div>
                     <div className="text-xs text-gray-400">
                       <div>{round.totalSteps} pas • {round.steps.length} actions</div>
@@ -474,6 +499,14 @@ export const RoundTracking: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Composant GPS Replay */}
+      {showGPSReplay && selectedRound && (
+        <GPSReplay 
+          round={selectedRound} 
+          onClose={closeGPSReplay} 
+        />
       )}
     </div>
   );
