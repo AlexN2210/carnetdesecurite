@@ -49,7 +49,7 @@ export const RoundTracking: React.FC = () => {
   const [isReplaying, setIsReplaying] = useState(false);
   const [replayIndex, setReplayIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [pedometerEnabled, setPedometerEnabled] = useState(false);
+  const [timerEnabled, setTimerEnabled] = useState(false);
   const [showGPSReplay, setShowGPSReplay] = useState(false);
   const [selectedRound, setSelectedRound] = useState<RoundData | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
@@ -62,16 +62,16 @@ export const RoundTracking: React.FC = () => {
   const [expectedSteps, setExpectedSteps] = useState(0);
   const [customExpectedSteps, setCustomExpectedSteps] = useState(1);
   const [showValidationPanel, setShowValidationPanel] = useState(true);
-  const [pedometerStatusUpdate, setPedometerStatusUpdate] = useState(0); // Pour forcer le re-render
+  
+  // 🚶‍♂️ NOUVEAUX PARAMÈTRES POUR LE CALCUL DE DISTANCE
+  const [userHeight, setUserHeight] = useState(175); // Taille en cm
+  const [walkingSpeed, setWalkingSpeed] = useState(5.0); // Vitesse en km/h
+  const [currentDistance, setCurrentDistance] = useState(0); // Distance parcourue en mètres
+  const [walkingStartTime, setWalkingStartTime] = useState<number | null>(null);
   
   const stepCountRef = useRef(0);
   const roundStartTime = useRef<number>(0);
-  const lastAcceleration = useRef<{ x: number; y: number; z: number } | null>(null);
-  const stepThreshold = useRef(0.5); // Seuil pour détecter un pas
-  const lastStepTime = useRef(0);
-  const minStepInterval = 300; // Intervalle minimum entre les pas (ms)
-  const lastManualActionTime = useRef(0); // Timestamp de la dernière action manuelle
-  const pedometerDisabledUntil = useRef(0); // Désactiver le podomètre jusqu'à ce timestamp
+  const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
   // Charger les rondes et sites au montage du composant
   useEffect(() => {
@@ -112,30 +112,6 @@ export const RoundTracking: React.FC = () => {
     };
   }, [isRecording, roundData]);
 
-  // Timer pour mettre à jour l'affichage du statut du podomètre
-  useEffect(() => {
-    let statusUpdateInterval: NodeJS.Timeout;
-    
-    if (isRecording && pedometerEnabled && pedometerDisabledUntil.current > 0) {
-      statusUpdateInterval = setInterval(() => {
-        const currentTime = Date.now();
-        if (currentTime >= pedometerDisabledUntil.current) {
-          // Le podomètre est réactivé
-          setPedometerStatusUpdate(currentTime);
-          clearInterval(statusUpdateInterval);
-        } else {
-          // Mettre à jour le compteur
-          setPedometerStatusUpdate(currentTime);
-        }
-      }, 1000); // Mise à jour toutes les secondes
-    }
-    
-    return () => {
-      if (statusUpdateInterval) {
-        clearInterval(statusUpdateInterval);
-      }
-    };
-  }, [isRecording, pedometerEnabled, pedometerStatusUpdate]);
 
   // Fonction pour récupérer les rondes temporaires sauvegardées
   const recoverTemporaryRounds = () => {
@@ -212,19 +188,19 @@ export const RoundTracking: React.FC = () => {
     }
   };
 
-  // Podomètre basé sur l'accéléromètre
+  // 🚶‍♂️ SYSTÈME DE TIMER POUR CALCULER LA DISTANCE
   useEffect(() => {
-    if (isRecording && pedometerEnabled) {
+    if (isRecording && timerEnabled) {
       roundStartTime.current = Date.now();
-      startPedometer();
+      startDistanceTimer();
     } else {
-      stopPedometer();
+      stopDistanceTimer();
     }
     
     return () => {
-      stopPedometer();
+      stopDistanceTimer();
     };
-  }, [isRecording, pedometerEnabled]);
+  }, [isRecording, timerEnabled]);
 
   // Sauvegarde automatique périodique des rondes en cours
   useEffect(() => {
@@ -258,79 +234,53 @@ export const RoundTracking: React.FC = () => {
     };
   }, [isRecording, roundData]);
 
-  const startPedometer = () => {
-    if (typeof window.DeviceMotionEvent !== 'undefined' && window.DeviceMotionEvent.requestPermission) {
-      // iOS 13+ nécessite une permission
-      window.DeviceMotionEvent.requestPermission().then(response => {
-        if (response === 'granted') {
-          window.addEventListener('devicemotion', handleMotion);
-        }
-      });
-    } else {
-      // Android et autres navigateurs
-      window.addEventListener('devicemotion', handleMotion);
-    }
+  // 🚶‍♂️ FONCTIONS POUR LE SYSTÈME DE TIMER ET CALCUL DE DISTANCE
+  
+  const calculateStepLength = (height: number): number => {
+    // Formule basée sur la taille : longueur de pas = 0.415 × taille en mètres
+    const heightInMeters = height / 100;
+    return 0.415 * heightInMeters;
   };
 
-  const stopPedometer = () => {
-    window.removeEventListener('devicemotion', handleMotion);
-  };
-
-  const handleMotion = (event: any) => {
-    if (!isRecording || !pedometerEnabled) return;
-
-    const currentTime = Date.now();
+  const startDistanceTimer = () => {
+    console.log('🚶‍♂️ Démarrage du timer de distance...');
+    setWalkingStartTime(Date.now());
+    setCurrentDistance(0);
     
-    // 🚫 PROTECTION RENFORCÉE : Vérifier si le podomètre est temporairement désactivé
-    if (currentTime < pedometerDisabledUntil.current) {
-      console.log(`🚫 Podomètre temporairement désactivé (${Math.round((pedometerDisabledUntil.current - currentTime) / 1000)}s restantes)`);
-      return;
-    }
-
-    const acceleration = event.accelerationIncludingGravity;
-    if (!acceleration || acceleration.x === null || acceleration.y === null || acceleration.z === null) return;
-
-    const { x, y, z } = acceleration;
-
-    // Calculer la magnitude de l'accélération
-    const magnitude = Math.sqrt(x * x + y * y + z * z);
-    
-    if (lastAcceleration.current) {
-      const lastMagnitude = Math.sqrt(
-        lastAcceleration.current.x * lastAcceleration.current.x +
-        lastAcceleration.current.y * lastAcceleration.current.y +
-        lastAcceleration.current.z * lastAcceleration.current.z
-      );
-      
-      const delta = Math.abs(magnitude - lastMagnitude);
-
-      // Détecter un pas si le changement d'accélération dépasse le seuil
-      // et qu'assez de temps s'est écoulé depuis le dernier pas
-      if (delta > stepThreshold.current && 
-          currentTime - lastStepTime.current > minStepInterval) {
+    // Timer qui met à jour la distance toutes les secondes
+    timerInterval.current = setInterval(() => {
+      if (walkingStartTime) {
+        const elapsedSeconds = (Date.now() - walkingStartTime) / 1000;
+        const speedInMs = (walkingSpeed * 1000) / 3600; // Convertir km/h en m/s
+        const distance = speedInMs * elapsedSeconds;
+        setCurrentDistance(distance);
         
-        // ⚠️ PROTECTION SUPPLÉMENTAIRE : Vérifier la dernière action manuelle
-        const timeSinceLastManualAction = currentTime - lastManualActionTime.current;
+        // Calculer le nombre de pas basé sur la distance
+        const stepLength = calculateStepLength(userHeight);
+        const steps = Math.floor(distance / stepLength);
+        setActualSteps(steps);
         
-        // Si une action manuelle a été faite il y a moins de 5 secondes, ignorer le pas automatique
-        if (timeSinceLastManualAction < 5000) {
-          console.log(`🚫 Pas automatique ignoré - action manuelle récente (${Math.round(timeSinceLastManualAction / 1000)}s)`);
-          lastAcceleration.current = { x, y, z };
-          return;
-        }
-        
-        addStep('Marche', 'automatique');
-        lastStepTime.current = currentTime;
-        
-        // Mettre à jour le compteur de pas actuels pour la validation
-        setActualSteps(prev => prev + 1);
-        
-        // Log pour le débogage
-        console.log(`Pas détecté automatiquement - Delta: ${delta.toFixed(3)}, Seuil: ${stepThreshold.current}`);
+        console.log(`🚶‍♂️ Distance: ${distance.toFixed(1)}m, Pas: ${steps}, Vitesse: ${walkingSpeed}km/h`);
       }
-    }
+    }, 1000); // Mise à jour toutes les secondes
+  };
 
-    lastAcceleration.current = { x, y, z };
+  const stopDistanceTimer = () => {
+    console.log('⏹️ Arrêt du timer de distance');
+    if (timerInterval.current) {
+      clearInterval(timerInterval.current);
+      timerInterval.current = null;
+    }
+    setWalkingStartTime(null);
+  };
+
+  const resetDistance = () => {
+    console.log('🔄 Reset de la distance');
+    setCurrentDistance(0);
+    setActualSteps(0);
+    if (walkingStartTime) {
+      setWalkingStartTime(Date.now());
+    }
   };
 
   const loadRoundsFromDatabase = async () => {
@@ -360,42 +310,20 @@ export const RoundTracking: React.FC = () => {
 
     console.log(`🔄 Ajout d'étape: ${action} ${direction || ''} - Pas actuels: ${stepCountRef.current}`);
 
-    // TOUJOURS ajouter une étape pour toutes les actions manuelles
+    // ✅ SOLUTION SIMPLIFIÉE : Traiter toutes les actions de la même manière
     const isManualAction = direction !== 'automatique';
     const isStepAction = action === 'Marche' || action === 'Tout droit' || action === 'Reculer' || 
                         action === 'Droite' || action === 'Gauche';
 
-    // 🛡️ PROTECTION : Si c'est une action manuelle, désactiver temporairement le podomètre
-    if (isManualAction) {
-      const currentTime = Date.now();
-      lastManualActionTime.current = currentTime;
-      
-      // Désactiver le podomètre pendant 8 secondes après une action manuelle
-      pedometerDisabledUntil.current = currentTime + 8000;
-      
-      console.log(`🛡️ Action manuelle détectée - Podomètre désactivé pendant 8 secondes`);
-      
-      // Forcer le re-render pour mettre à jour l'affichage
-      setPedometerStatusUpdate(currentTime);
-      
-      stepCountRef.current += 1;
-      setStepCount(stepCountRef.current);
-      console.log(`📈 Compteur d'étapes incrémenté: ${stepCountRef.current}`);
-    } else if (isStepAction && direction === 'automatique') {
-      stepCountRef.current += 1;
-      setStepCount(stepCountRef.current);
-      console.log(`📈 Compteur d'étapes incrémenté (auto): ${stepCountRef.current}`);
-    }
+    // Incrémenter le compteur d'étapes pour TOUTES les actions
+    stepCountRef.current += 1;
+    setStepCount(stepCountRef.current);
+    console.log(`📈 Compteur d'étapes incrémenté: ${stepCountRef.current}`);
 
-    // Pour les actions de marche, utiliser le nombre de pas personnalisé ou 1 pour automatique
-    // Pour les autres actions, mettre 0 pas
+    // ✅ SOLUTION SIMPLIFIÉE : Calcul des pas basé uniquement sur l'action
     let stepCount = 0;
     if (isStepAction) {
-      if (direction === 'automatique') {
-        stepCount = 1; // Un pas automatique
-      } else {
-        stepCount = customExpectedSteps; // Nombre de pas personnalisé
-      }
+      stepCount = customExpectedSteps; // Nombre de pas personnalisé pour toutes les actions de marche
     }
     // Pour les autres actions (Pointeaux, Porte, Étage, etc.), stepCount reste à 0
     
@@ -527,6 +455,8 @@ export const RoundTracking: React.FC = () => {
     setExpectedSteps(0);
     setIsStepValidated(false);
     setShowStepValidation(false);
+    setCurrentDistance(0);
+    setWalkingStartTime(null);
     
     console.log('✅ Ronde démarrée - isRecording=true, roundData initialisé');
   };
@@ -575,6 +505,7 @@ export const RoundTracking: React.FC = () => {
     setCurrentStep(0);
     stepCountRef.current = 0;
     setStepCount(0);
+    stopDistanceTimer();
   };
 
   const replayRound = (round: RoundData) => {
@@ -687,14 +618,9 @@ export const RoundTracking: React.FC = () => {
           <span>RoundData: {roundData ? 'OUI' : 'NON'}</span>
           <span>Steps: {roundData?.steps.length || 0}</span>
         </div>
-        {isRecording && pedometerEnabled && (
-          <div className="mt-1 flex justify-between">
-            <span>Podomètre: {Date.now() < pedometerDisabledUntil.current ? '⏸️ DÉSACTIVÉ' : '✅ ACTIF'}</span>
-            {Date.now() < pedometerDisabledUntil.current && (
-              <span className="text-yellow-400">
-                ⏱️ {Math.round((pedometerDisabledUntil.current - Date.now()) / 1000)}s
-              </span>
-            )}
+        {isRecording && timerEnabled && (
+          <div className="mt-1">
+            <span>Timer: {timerEnabled ? '✅ ACTIF' : '❌ INACTIF'} | Distance: {currentDistance.toFixed(1)}m | Pas: {actualSteps}</span>
           </div>
         )}
         {isRecording && (
@@ -838,6 +764,46 @@ export const RoundTracking: React.FC = () => {
             </div>
           </div>
           
+          {/* 🚶‍♂️ Paramètres de marche */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1">
+                Taille (cm)
+              </label>
+              <input
+                type="number"
+                min="120"
+                max="220"
+                value={userHeight}
+                onChange={(e) => setUserHeight(parseInt(e.target.value) || 175)}
+                className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+                placeholder="175"
+              />
+              <div className="text-xs text-gray-400 mt-1">
+                Longueur de pas: {calculateStepLength(userHeight).toFixed(2)}m
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1">
+                Vitesse de marche (km/h)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                step="0.5"
+                value={walkingSpeed}
+                onChange={(e) => setWalkingSpeed(parseFloat(e.target.value) || 5.0)}
+                className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+                placeholder="5.0"
+              />
+              <div className="text-xs text-gray-400 mt-1">
+                {walkingSpeed} km/h = {(walkingSpeed * 1000 / 3600).toFixed(2)} m/s
+              </div>
+            </div>
+          </div>
+          
           <div>
             <label className="block text-xs font-medium text-gray-300 mb-1">
               Notes (optionnel)
@@ -904,35 +870,46 @@ export const RoundTracking: React.FC = () => {
           )}
         </div>
         
-        {/* Contrôle du podomètre - Version compacte */}
+        {/* 🚶‍♂️ Contrôle du timer de distance - Version compacte */}
         {isRecording && (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setPedometerEnabled(!pedometerEnabled)}
+                onClick={() => setTimerEnabled(!timerEnabled)}
                 className={`flex items-center px-3 py-1 rounded transition-colors text-xs font-medium ${
-                  pedometerEnabled 
+                  timerEnabled 
                     ? 'bg-green-600 hover:bg-green-700 text-white' 
                     : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
                 }`}
               >
-                <Footprints className="h-3 w-3 mr-1" />
-                {pedometerEnabled ? 'ON' : 'OFF'}
+                <Clock className="h-3 w-3 mr-1" />
+                {timerEnabled ? 'ON' : 'OFF'}
               </button>
               
               {/* Indicateur de statut */}
               <div className={`w-2 h-2 rounded-full ${
-                pedometerEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
-              }`} title={pedometerEnabled ? 'Podomètre actif' : 'Podomètre inactif'} />
+                timerEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
+              }`} title={timerEnabled ? 'Timer actif' : 'Timer inactif'} />
             </div>
             
-            {/* Affichage des pas actuels - Version compacte */}
-            {pedometerEnabled && (
-              <div className="bg-gray-700 rounded px-2 py-1 text-center">
-                <div className="text-sm font-bold text-white">{actualSteps}</div>
-                <div className="text-xs text-gray-400">
-                  {Date.now() < pedometerDisabledUntil.current ? '⏸️' : '👟'} pas
+            {/* Affichage de la distance et des pas - Version compacte */}
+            {timerEnabled && (
+              <div className="flex space-x-2">
+                <div className="bg-gray-700 rounded px-2 py-1 text-center">
+                  <div className="text-sm font-bold text-white">{currentDistance.toFixed(1)}m</div>
+                  <div className="text-xs text-gray-400">Distance</div>
                 </div>
+                <div className="bg-gray-700 rounded px-2 py-1 text-center">
+                  <div className="text-sm font-bold text-white">{actualSteps}</div>
+                  <div className="text-xs text-gray-400">Pas</div>
+                </div>
+                <button
+                  onClick={resetDistance}
+                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs"
+                  title="Reset distance"
+                >
+                  🔄
+                </button>
               </div>
             )}
           </div>
