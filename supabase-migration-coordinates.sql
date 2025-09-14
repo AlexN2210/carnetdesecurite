@@ -36,3 +36,4 @@ BEGIN
     RAISE NOTICE 'Colonnes ajoutées: latitude, longitude';
     RAISE NOTICE 'Index créé: idx_sites_coordinates';
 END $$;
+-- 

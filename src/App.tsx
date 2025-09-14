@@ -187,7 +187,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900 w-full overflow-x-hidden">
       <Header
         isLocked={state.isLocked}
         showSensitiveData={state.showSensitiveData}
@@ -199,20 +199,20 @@ function App() {
         onLogout={handleLogout}
       />
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-bold text-white">Sites surveillés</h2>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full overflow-x-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+          <div className="w-full sm:w-auto">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white">Sites surveillés</h2>
             <p className="text-gray-400 mt-1">
               {filteredSites.length} site{filteredSites.length !== 1 ? 's' : ''} 
               {state.searchQuery && ` trouvé${filteredSites.length !== 1 ? 's' : ''}`}
             </p>
           </div>
           
-          <div className="flex space-x-3">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
             <button
               onClick={() => setShowRoundTracking(true)}
-              className="flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg"
+              className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg w-full sm:w-auto"
             >
               <Navigation className="h-5 w-5" />
               <span>Suivi de Ronde</span>
@@ -220,7 +220,7 @@ function App() {
             
             <button
               onClick={() => setShowSiteForm(true)}
-              className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg"
+              className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg w-full sm:w-auto"
             >
               <Plus className="h-5 w-5" />
               <span>Nouveau site</span>
@@ -243,7 +243,7 @@ function App() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full">
             {filteredSites.map(site => (
               <SiteCard
                 key={site.id}

@@ -2,6 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Styles de base pour mobile */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Support des zones de sécurité mobile (iPhone X et plus) */
+@supports (padding: max(0px)) {
+  .safe-area-top {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  
+  .safe-area-left {
+    padding-left: max(env(safe-area-inset-left), 0px);
+  }
+  
+  .safe-area-right {
+    padding-right: max(env(safe-area-inset-right), 0px);
+  }
+}
+
+/* Empêcher le zoom sur les inputs sur iOS */
+input, textarea, select {
+  font-size: 16px;
+}
+
+/* Empêcher le scroll horizontal sur tous les éléments */
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Styles spécifiques pour les conteneurs */
+.container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Empêcher le débordement horizontal sur les cartes */
+.site-card {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Styles pour les éléments flexibles */
+.flex-container {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Empêcher le débordement sur les textes longs */
+.text-overflow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Styles pour les boutons sur mobile */
+@media (max-width: 640px) {
+  .mobile-full-width {
+    width: 100%;
+  }
+  
+  .mobile-text-center {
+    text-align: center;
+  }
+}
+
 /* Animations personnalisées pour le loader */
 @keyframes spin-slow {
   from {
