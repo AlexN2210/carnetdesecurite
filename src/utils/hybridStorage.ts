@@ -23,9 +23,14 @@ const getCurrentUserId = async (): Promise<string | null> => {
 // Fonctions pour les sites
 export const loadSites = async (): Promise<Site[]> => {
   try {
+    console.log('🔄 Chargement des sites...');
+    
     // Essayer Supabase d'abord
     const userId = await getCurrentUserId();
+    console.log('👤 Utilisateur ID:', userId);
+    
     if (userId) {
+      console.log('🔍 Recherche des sites dans Supabase...');
       const { data, error } = await supabase
         .from('sites')
         .select('*')
@@ -33,18 +38,29 @@ export const loadSites = async (): Promise<Site[]> => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error loading sites from Supabase:', error);
-        // Fallback vers localStorage
+        console.error('❌ Erreur chargement sites Supabase:', error);
+        console.log('🔄 Fallback vers localStorage...');
         return loadSitesFromLocal();
       }
 
-      return data || [];
+      console.log('✅ Sites chargés depuis Supabase:', data?.length || 0, 'sites');
+      
+      // Convertir les access_means de JSON string vers objet
+      const sites = (data || []).map(site => ({
+        ...site,
+        accessMeans: typeof site.access_means === 'string' 
+          ? JSON.parse(site.access_means) 
+          : site.access_means || []
+      }));
+
+      return sites;
     } else {
-      // Pas d'utilisateur connecté, utiliser localStorage
+      console.log('⚠️ Pas d\'utilisateur connecté, chargement local...');
       return loadSitesFromLocal();
     }
   } catch (error) {
-    console.error('Error loading sites:', error);
+    console.error('❌ Erreur générale chargement sites:', error);
+    console.log('🔄 Fallback vers localStorage...');
     return loadSitesFromLocal();
   }
 };
@@ -64,47 +80,78 @@ const loadSitesFromLocal = (): Site[] => {
 
 export const saveSites = async (sites: Site[]): Promise<void> => {
   try {
+    console.log('🔄 Tentative de sauvegarde de', sites.length, 'sites...');
+    
     // Essayer Supabase d'abord
     const userId = await getCurrentUserId();
+    console.log('👤 Utilisateur ID:', userId);
+    
     if (userId) {
+      // Vérifier d'abord si la table sites existe
+      const { data: tableCheck, error: tableError } = await supabase
+        .from('sites')
+        .select('id')
+        .limit(1);
+      
+      if (tableError) {
+        console.error('❌ Table sites non accessible:', tableError);
+        console.log('🔄 Fallback vers localStorage...');
+        saveSitesToLocal(sites);
+        return;
+      }
+      
+      console.log('✅ Table sites accessible');
+
       // Supprimer tous les sites existants de l'utilisateur
+      console.log('🗑️ Suppression des sites existants...');
       const { error: deleteError } = await supabase
         .from('sites')
         .delete()
         .eq('user_id', userId);
 
       if (deleteError) {
-        console.error('Error deleting existing sites:', deleteError);
-        // Fallback vers localStorage
+        console.error('❌ Erreur suppression sites existants:', deleteError);
+        console.log('🔄 Fallback vers localStorage...');
         saveSitesToLocal(sites);
         return;
       }
 
+      console.log('✅ Sites existants supprimés');
+
       // Insérer les nouveaux sites avec l'ID utilisateur
       if (sites.length > 0) {
+        console.log('💾 Insertion de', sites.length, 'nouveaux sites...');
+        
         const sitesWithUserId = sites.map(site => ({
           ...site,
-          user_id: userId
+          user_id: userId,
+          access_means: JSON.stringify(site.accessMeans) // Convertir en JSON string
         }));
 
-        const { error: insertError } = await supabase
+        console.log('📝 Données à insérer:', sitesWithUserId);
+
+        const { data, error: insertError } = await supabase
           .from('sites')
-          .insert(sitesWithUserId);
+          .insert(sitesWithUserId)
+          .select();
 
         if (insertError) {
-          console.error('Error inserting sites:', insertError);
-          // Fallback vers localStorage
+          console.error('❌ Erreur insertion sites:', insertError);
+          console.log('🔄 Fallback vers localStorage...');
           saveSitesToLocal(sites);
         } else {
-          console.log('✅ Sites sauvegardés dans Supabase');
+          console.log('✅ Sites sauvegardés dans Supabase:', data);
         }
+      } else {
+        console.log('ℹ️ Aucun site à sauvegarder');
       }
     } else {
-      // Pas d'utilisateur connecté, utiliser localStorage
+      console.log('⚠️ Pas d\'utilisateur connecté, sauvegarde locale...');
       saveSitesToLocal(sites);
     }
   } catch (error) {
-    console.error('Error saving sites:', error);
+    console.error('❌ Erreur générale sauvegarde sites:', error);
+    console.log('🔄 Fallback vers localStorage...');
     saveSitesToLocal(sites);
   }
 };

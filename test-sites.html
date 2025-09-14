@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sauvegarde Sites</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #111827;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #1f2937;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #065f46; }
+        .error { background: #7f1d1d; }
+        .warning { background: #92400e; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #2563eb; }
+        .log {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        input, textarea {
+            background: #374151;
+            color: white;
+            border: 1px solid #4b5563;
+            padding: 8px;
+            border-radius: 4px;
+            width: 100%;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test de sauvegarde des sites</h1>
+        
+        <div class="test-section">
+            <h2>Test de connexion Supabase</h2>
+            <button onclick="testSupabaseConnection()">Tester la connexion</button>
+            <div id="connection-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test de création de site</h2>
+            <div>
+                <input type="text" id="siteName" placeholder="Nom du site" value="Site de test">
+                <input type="text" id="siteAddress" placeholder="Adresse" value="123 Rue de Test, Paris">
+                <textarea id="siteNotes" placeholder="Notes" rows="3">Site de test pour vérifier la sauvegarde</textarea>
+                <button onclick="createTestSite()">Créer un site de test</button>
+            </div>
+            <div id="create-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test de chargement des sites</h2>
+            <button onclick="loadSites()">Charger les sites</button>
+            <div id="load-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test de la table sites</h2>
+            <button onclick="testSitesTable()">Vérifier la table sites</button>
+            <div id="table-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Logs de débogage</h2>
+            <button onclick="clearLogs()">Effacer les logs</button>
+            <div id="debug-log" class="log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+
+        const supabaseUrl = 'https://yqckzyubenfsjmopvtok.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxY2t6eXViZW5mc2ptb3B2dG9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NTk2NTQsImV4cCI6MjA3MzMzNTY1NH0.agVhTsVGc-fggAjNPteSSOrhViV5vLa65OHaWdHQbIk';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const log = (message, type = 'info') => {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#6b7280';
+            logDiv.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        const addResult = (elementId, message, type) => {
+            const element = document.getElementById(elementId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = message;
+            element.appendChild(resultDiv);
+        };
+
+        window.testSupabaseConnection = async () => {
+            log('Test de connexion Supabase...');
+            try {
+                const { data, error } = await supabase.auth.getUser();
+                if (error) {
+                    addResult('connection-result', '❌ Erreur de connexion: ' + error.message, 'error');
+                    log('Erreur de connexion: ' + error.message, 'error');
+                } else {
+                    addResult('connection-result', '✅ Connexion réussie', 'success');
+                    log('Connexion réussie', 'success');
+                    if (data.user) {
+                        log('Utilisateur connecté: ' + data.user.email, 'success');
+                    } else {
+                        log('Aucun utilisateur connecté', 'warning');
+                    }
+                }
+            } catch (error) {
+                addResult('connection-result', '❌ Erreur: ' + error.message, 'error');
+                log('Erreur: ' + error.message, 'error');
+            }
+        };
+
+        window.createTestSite = async () => {
+            const name = document.getElementById('siteName').value;
+            const address = document.getElementById('siteAddress').value;
+            const notes = document.getElementById('siteNotes').value;
+            
+            log('Création d\'un site de test...');
+            try {
+                // D'abord, essayer de se connecter
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                if (authError || !user) {
+                    addResult('create-result', '❌ Pas d\'utilisateur connecté', 'error');
+                    log('Pas d\'utilisateur connecté', 'error');
+                    return;
+                }
+
+                const testSite = {
+                    id: 'test_' + Date.now(),
+                    user_id: user.id,
+                    name: name,
+                    address: address,
+                    latitude: 48.8566,
+                    longitude: 2.3522,
+                    notes: notes,
+                    access_means: JSON.stringify([{
+                        id: 'access_1',
+                        type: 'key',
+                        description: 'Clé principale',
+                        code: '1234',
+                        location: 'Boîte à clés'
+                    }]),
+                    has_alarm: true,
+                    alarm_code: '1234',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+
+                log('Tentative d\'insertion du site...');
+                const { data, error } = await supabase
+                    .from('sites')
+                    .insert([testSite]);
+
+                if (error) {
+                    addResult('create-result', '❌ Erreur d\'insertion: ' + error.message, 'error');
+                    log('Erreur d\'insertion: ' + error.message, 'error');
+                    log('Détails: ' + JSON.stringify(error, null, 2), 'error');
+                } else {
+                    addResult('create-result', '✅ Site créé avec succès', 'success');
+                    log('Site créé avec succès', 'success');
+                }
+            } catch (error) {
+                addResult('create-result', '❌ Erreur: ' + error.message, 'error');
+                log('Erreur: ' + error.message, 'error');
+            }
+        };
+
+        window.loadSites = async () => {
+            log('Chargement des sites...');
+            try {
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                if (authError || !user) {
+                    addResult('load-result', '❌ Pas d\'utilisateur connecté', 'error');
+                    log('Pas d\'utilisateur connecté', 'error');
+                    return;
+                }
+
+                const { data, error } = await supabase
+                    .from('sites')
+                    .select('*')
+                    .eq('user_id', user.id);
+
+                if (error) {
+                    addResult('load-result', '❌ Erreur de chargement: ' + error.message, 'error');
+                    log('Erreur de chargement: ' + error.message, 'error');
+                } else {
+                    addResult('load-result', `✅ ${data.length} site(s) chargé(s)`, 'success');
+                    log(`${data.length} site(s) chargé(s)`, 'success');
+                    data.forEach(site => {
+                        log(`- ${site.name} (${site.address})`, 'info');
+                    });
+                }
+            } catch (error) {
+                addResult('load-result', '❌ Erreur: ' + error.message, 'error');
+                log('Erreur: ' + error.message, 'error');
+            }
+        };
+
+        window.testSitesTable = async () => {
+            log('Test de la table sites...');
+            try {
+                const { data, error } = await supabase
+                    .from('sites')
+                    .select('count')
+                    .limit(1);
+
+                if (error) {
+                    addResult('table-result', '❌ Table sites non accessible: ' + error.message, 'error');
+                    log('Table sites non accessible: ' + error.message, 'error');
+                } else {
+                    addResult('table-result', '✅ Table sites accessible', 'success');
+                    log('Table sites accessible', 'success');
+                }
+            } catch (error) {
+                addResult('table-result', '❌ Erreur: ' + error.message, 'error');
+                log('Erreur: ' + error.message, 'error');
+            }
+        };
+
+        window.clearLogs = () => {
+            document.getElementById('debug-log').innerHTML = '';
+            document.querySelectorAll('.test-result').forEach(el => el.remove());
+        };
+
+        // Tests automatiques au chargement
+        window.addEventListener('load', () => {
+            log('Page de test chargée', 'success');
+            testSupabaseConnection();
+            testSitesTable();
+        });
+    </script>
+</body>
+</html>

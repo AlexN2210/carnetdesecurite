@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Correction Sites</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #111827;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #1f2937;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #065f46; }
+        .error { background: #7f1d1d; }
+        .warning { background: #92400e; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #2563eb; }
+        .log {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .step {
+            background: #374151;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 3px solid #10b981;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test de correction des sites</h1>
+        
+        <div class="step">
+            <h3>📋 Étapes à suivre :</h3>
+            <ol>
+                <li>Exécuter le script <code>fix-user-id-type.sql</code> dans l'éditeur SQL de Supabase</li>
+                <li>Vérifier que la colonne user_id est maintenant de type UUID</li>
+                <li>Tester la sauvegarde d'un site</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>1. Vérification du type de colonne</h2>
+            <button onclick="checkColumnType()">Vérifier le type de user_id</button>
+            <div id="column-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Test de connexion et authentification</h2>
+            <button onclick="testAuth()">Tester l'authentification</button>
+            <div id="auth-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Test de sauvegarde d'un site</h2>
+            <button onclick="testSaveSite()">Créer un site de test</button>
+            <div id="save-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Test de chargement des sites</h2>
+            <button onclick="testLoadSites()">Charger les sites</button>
+            <div id="load-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Logs de débogage</h2>
+            <button onclick="clearLogs()">Effacer les logs</button>
+            <div id="debug-log" class="log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+
+        const supabaseUrl = 'https://yqckzyubenfsjmopvtok.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxY2t6eXViZW5mc2ptb3B2dG9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NTk2NTQsImV4cCI6MjA3MzMzNTY1NH0.agVhTsVGc-fggAjNPteSSOrhViV5vLa65OHaWdHQbIk';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const log = (message, type = 'info') => {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#6b7280';
+            logDiv.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        const addResult = (elementId, message, type) => {
+            const element = document.getElementById(elementId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = message;
+            element.appendChild(resultDiv);
+        };
+
+        window.checkColumnType = async () => {
+            log('Vérification du type de colonne user_id...');
+            try {
+                const { data, error } = await supabase
+                    .rpc('get_column_info', { table_name: 'sites', column_name: 'user_id' });
+
+                if (error) {
+                    // Fallback: requête directe
+                    const { data: directData, error: directError } = await supabase
+                        .from('information_schema.columns')
+                        .select('data_type')
+                        .eq('table_name', 'sites')
+                        .eq('column_name', 'user_id');
+
+                    if (directError) {
+                        addResult('column-result', '❌ Impossible de vérifier le type de colonne', 'error');
+                        log('Erreur: ' + directError.message, 'error');
+                    } else {
+                        const dataType = directData[0]?.data_type;
+                        if (dataType === 'uuid') {
+                            addResult('column-result', '✅ user_id est de type UUID', 'success');
+                            log('Type de colonne correct: UUID', 'success');
+                        } else {
+                            addResult('column-result', `❌ user_id est de type ${dataType} (devrait être UUID)`, 'error');
+                            log(`Type incorrect: ${dataType}`, 'error');
+                        }
+                    }
+                } else {
+                    const dataType = data?.data_type;
+                    if (dataType === 'uuid') {
+                        addResult('column-result', '✅ user_id est de type UUID', 'success');
+                        log('Type de colonne correct: UUID', 'success');
+                    } else {
+                        addResult('column-result', `❌ user_id est de type ${dataType} (devrait être UUID)`, 'error');
+                        log(`Type incorrect: ${dataType}`, 'error');
+                    }
+                }
+            } catch (error) {
+                addResult('column-result', '❌ Erreur: ' + error.message, 'error');
+                log('Erreur: ' + error.message, 'error');
+            }
+        };
+
+        window.testAuth = async () => {
+            log('Test de l\'authentification...');
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    addResult('auth-result', '❌ Erreur d\'authentification: ' + error.message, 'error');
+                    log('Erreur auth: ' + error.message, 'error');
+                } else if (user) {
+                    addResult('auth-result', '✅ Utilisateur connecté: ' + user.email, 'success');
+                    log('Utilisateur connecté: ' + user.email, 'success');
+                    log('User ID: ' + user.id, 'info');
+                } else {
+                    addResult('auth-result', '⚠️ Aucun utilisateur connecté', 'warning');
+                    log('Aucun utilisateur connecté', 'warning');
+                }
+            } catch (error) {
+                addResult('auth-result', '❌ Erreur: ' + error.message, 'error');
+                log('Erreur: ' + error.message, 'error');
+            }
+        };
+
+        window.testSaveSite = async () => {
+            log('Test de sauvegarde d\'un site...');
+            try {
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                if (authError || !user) {
+                    addResult('save-result', '❌ Pas d\'utilisateur connecté', 'error');
+                    log('Pas d\'utilisateur connecté', 'error');
+                    return;
+                }
+
+                const testSite = {
+                    id: 'test_' + Date.now(),
+                    user_id: user.id, // UUID
+                    name: 'Site de test corrigé',
+                    address: '123 Rue de Test, Paris',
+                    latitude: 48.8566,
+                    longitude: 2.3522,
+                    notes: 'Test après correction du type user_id',
+                    access_means: JSON.stringify([{
+                        id: 'access_1',
+                        type: 'key',
+                        description: 'Clé principale',
+                        code: '1234',
+                        location: 'Boîte à clés'
+                    }]),
+                    has_alarm: true,
+                    alarm_code: '1234',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+
+                log('Tentative d\'insertion du site...');
+                const { data, error } = await supabase
+                    .from('sites')
+                    .insert([testSite])
+                    .select();
+
+                if (error) {
+                    addResult('save-result', '❌ Erreur d\'insertion: ' + error.message, 'error');
+                    log('Erreur d\'insertion: ' + error.message, 'error');
+                    log('Détails: ' + JSON.stringify(error, null, 2), 'error');
+                } else {
+                    addResult('save-result', '✅ Site créé avec succès', 'success');
+                    log('Site créé avec succès', 'success');
+                    log('Données retournées: ' + JSON.stringify(data, null, 2), 'info');
+                }
+            } catch (error) {
+                addResult('save-result', '❌ Erreur: ' + error.message, 'error');
+                log('Erreur: ' + error.message, 'error');
+            }
+        };
+
+        window.testLoadSites = async () => {
+            log('Test de chargement des sites...');
+            try {
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                if (authError || !user) {
+                    addResult('load-result', '❌ Pas d\'utilisateur connecté', 'error');
+                    log('Pas d\'utilisateur connecté', 'error');
+                    return;
+                }
+
+                const { data, error } = await supabase
+                    .from('sites')
+                    .select('*')
+                    .eq('user_id', user.id);
+
+                if (error) {
+                    addResult('load-result', '❌ Erreur de chargement: ' + error.message, 'error');
+                    log('Erreur de chargement: ' + error.message, 'error');
+                } else {
+                    addResult('load-result', `✅ ${data.length} site(s) chargé(s)`, 'success');
+                    log(`${data.length} site(s) chargé(s)`, 'success');
+                    data.forEach(site => {
+                        log(`- ${site.name} (${site.address})`, 'info');
+                    });
+                }
+            } catch (error) {
+                addResult('load-result', '❌ Erreur: ' + error.message, 'error');
+                log('Erreur: ' + error.message, 'error');
+            }
+        };
+
+        window.clearLogs = () => {
+            document.getElementById('debug-log').innerHTML = '';
+            document.querySelectorAll('.test-result').forEach(el => el.remove());
+        };
+
+        // Tests automatiques au chargement
+        window.addEventListener('load', () => {
+            log('Page de test chargée', 'success');
+            checkColumnType();
+            testAuth();
+        });
+    </script>
+</body>
+</html>
