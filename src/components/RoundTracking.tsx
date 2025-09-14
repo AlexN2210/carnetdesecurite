@@ -173,7 +173,12 @@ export const RoundTracking: React.FC = () => {
   };
 
   const addStep = (action: string, direction?: string, location?: string) => {
-    if (!isRecording || !roundData) return;
+    console.log(`🚀 addStep appelée avec: action=${action}, direction=${direction}, isRecording=${isRecording}, roundData=`, roundData);
+    
+    if (!isRecording || !roundData) {
+      console.log(`❌ addStep annulée: isRecording=${isRecording}, roundData=${!!roundData}`);
+      return;
+    }
 
     console.log(`🔄 Ajout d'étape: ${action} ${direction || ''} - Pas actuels: ${stepCountRef.current}`);
 
@@ -286,6 +291,7 @@ export const RoundTracking: React.FC = () => {
   };
 
   const startRound = () => {
+    console.log('🚀 Démarrage de la ronde...');
     const selectedSite = sites.find(site => site.id === selectedSiteId);
     const newRound: RoundData = {
       id: `round_${Date.now()}`,
@@ -299,6 +305,8 @@ export const RoundTracking: React.FC = () => {
       isCompleted: false
     };
     
+    console.log('📝 Nouvelle ronde créée:', newRound);
+    
     setRoundData(newRound);
     setIsRecording(true);
     setCurrentStep(0);
@@ -309,6 +317,8 @@ export const RoundTracking: React.FC = () => {
     setExpectedSteps(0);
     setIsStepValidated(false);
     setShowStepValidation(false);
+    
+    console.log('✅ Ronde démarrée - isRecording=true, roundData initialisé');
   };
 
   const stopRound = async () => {
@@ -415,6 +425,11 @@ export const RoundTracking: React.FC = () => {
           <h2 className="text-lg font-bold text-white flex items-center">
             <Navigation className="h-5 w-5 mr-2" />
             Suivi de Ronde
+            {isRecording && (
+              <span className="ml-2 px-2 py-1 bg-red-600 text-white text-xs rounded-full animate-pulse">
+                REC
+              </span>
+            )}
           </h2>
           <button
             onClick={() => setShowRounds(!showRounds)}
@@ -452,6 +467,15 @@ export const RoundTracking: React.FC = () => {
           <Footprints className="h-3 w-3 text-purple-400 mx-auto mb-0.5" />
           <div className="text-xs font-bold text-white">{actualSteps}</div>
           <div className="text-xs text-gray-400">Pas</div>
+        </div>
+      </div>
+
+      {/* Debug Info */}
+      <div className="bg-gray-800 p-2 text-xs text-gray-400 flex-shrink-0">
+        <div className="flex justify-between">
+          <span>Recording: {isRecording ? 'OUI' : 'NON'}</span>
+          <span>RoundData: {roundData ? 'OUI' : 'NON'}</span>
+          <span>Steps: {roundData?.steps.length || 0}</span>
         </div>
       </div>
 
@@ -686,7 +710,11 @@ export const RoundTracking: React.FC = () => {
           {navigationButtons.map((button, index) => (
             <button
               key={index}
-              onClick={() => addStep(button.action, button.direction)}
+              onClick={() => {
+                console.log(`🔘 Bouton cliqué: ${button.action} ${button.direction || ''}`);
+                console.log(`🔘 isRecording: ${isRecording}, roundData:`, roundData);
+                addStep(button.action, button.direction);
+              }}
               disabled={!isRecording}
               className={`${button.color} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-lg transition-all transform active:scale-95 flex flex-col items-center space-y-1 min-h-[60px] shadow-lg`}
             >
