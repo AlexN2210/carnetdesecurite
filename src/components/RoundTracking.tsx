@@ -244,24 +244,23 @@ export const RoundTracking: React.FC = () => {
 
   const startDistanceTimer = () => {
     console.log('🚶‍♂️ Démarrage du timer de distance...');
-    setWalkingStartTime(Date.now());
+    const startTime = Date.now();
+    setWalkingStartTime(startTime);
     setCurrentDistance(0);
     
     // Timer qui met à jour la distance toutes les secondes
     timerInterval.current = setInterval(() => {
-      if (walkingStartTime) {
-        const elapsedSeconds = (Date.now() - walkingStartTime) / 1000;
-        const speedInMs = (walkingSpeed * 1000) / 3600; // Convertir km/h en m/s
-        const distance = speedInMs * elapsedSeconds;
-        setCurrentDistance(distance);
-        
-        // Calculer le nombre de pas basé sur la distance
-        const stepLength = calculateStepLength(userHeight);
-        const steps = Math.floor(distance / stepLength);
-        setActualSteps(steps);
-        
-        console.log(`🚶‍♂️ Distance: ${distance.toFixed(1)}m, Pas: ${steps}, Vitesse: ${walkingSpeed}km/h`);
-      }
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+      const speedInMs = (walkingSpeed * 1000) / 3600; // Convertir km/h en m/s
+      const distance = speedInMs * elapsedSeconds;
+      setCurrentDistance(distance);
+      
+      // Calculer le nombre de pas basé sur la distance
+      const stepLength = calculateStepLength(userHeight);
+      const steps = Math.floor(distance / stepLength);
+      setActualSteps(steps);
+      
+      console.log(`🚶‍♂️ Distance: ${distance.toFixed(1)}m, Pas: ${steps}, Vitesse: ${walkingSpeed}km/h`);
     }, 1000); // Mise à jour toutes les secondes
   };
 
@@ -278,8 +277,10 @@ export const RoundTracking: React.FC = () => {
     console.log('🔄 Reset de la distance');
     setCurrentDistance(0);
     setActualSteps(0);
-    if (walkingStartTime) {
-      setWalkingStartTime(Date.now());
+    // Redémarrer le timer si il était actif
+    if (timerEnabled && isRecording) {
+      stopDistanceTimer();
+      startDistanceTimer();
     }
   };
 
@@ -300,8 +301,9 @@ export const RoundTracking: React.FC = () => {
   };
 
   const addStep = async (action: string, direction?: string, location?: string) => {
-    console.log(`🚀🚀🚀 addStep appelée avec: action=${action}, direction=${direction}, isRecording=${isRecording}, roundData=`, roundData);
+    console.log(`🚀🚀🚀 addStep appelée avec: action=${action}, direction=${direction}`);
     console.log(`🚀🚀🚀 ÉTAT COMPLET: isRecording=${isRecording}, roundData=${!!roundData}, roundData.steps.length=${roundData?.steps.length || 0}`);
+    console.log(`🚀🚀🚀 roundData.steps actuel:`, roundData?.steps);
     
     if (!isRecording || !roundData) {
       console.log(`❌❌❌ addStep annulée: isRecording=${isRecording}, roundData=${!!roundData}`);
@@ -367,12 +369,13 @@ export const RoundTracking: React.FC = () => {
       setExpectedSteps(customExpectedSteps); // Utiliser la valeur personnalisée
       setShowStepValidation(true);
       setIsStepValidated(false);
-      setActualSteps(0); // Reset des pas actuels
+      // Ne pas reset actualSteps ici car cela interfère avec le timer
     }
 
     // 💾 SAUVEGARDE IMMÉDIATE - Sauvegarder automatiquement en temps réel
     try {
       console.log('💾 Sauvegarde automatique de la ronde en cours...');
+      console.log('💾 Données à sauvegarder:', updatedRoundData);
       const { success, error } = await saveRound(updatedRoundData);
       if (success) {
         console.log('✅ Ronde sauvegardée automatiquement avec succès');
@@ -624,7 +627,7 @@ export const RoundTracking: React.FC = () => {
           </div>
         )}
         {isRecording && (
-          <div className="mt-2">
+          <div className="mt-2 space-x-2">
             <button
               onClick={() => {
                 console.log('🧪 TEST: Ajout d\'une action de test');
@@ -633,6 +636,24 @@ export const RoundTracking: React.FC = () => {
               className="px-2 py-1 bg-red-600 text-white text-xs rounded"
             >
               🧪 Test Action
+            </button>
+            <button
+              onClick={() => {
+                console.log('🧪 TEST: Ajout Droite');
+                addStep('Droite', 'right');
+              }}
+              className="px-2 py-1 bg-blue-600 text-white text-xs rounded"
+            >
+              🧪 Test Droite
+            </button>
+            <button
+              onClick={() => {
+                console.log('🧪 TEST: Ajout Gauche');
+                addStep('Gauche', 'left');
+              }}
+              className="px-2 py-1 bg-green-600 text-white text-xs rounded"
+            >
+              🧪 Test Gauche
             </button>
           </div>
         )}
