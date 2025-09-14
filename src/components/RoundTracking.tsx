@@ -62,6 +62,7 @@ export const RoundTracking: React.FC = () => {
   const [expectedSteps, setExpectedSteps] = useState(0);
   const [customExpectedSteps, setCustomExpectedSteps] = useState(1);
   const [showValidationPanel, setShowValidationPanel] = useState(true);
+  const [pedometerStatusUpdate, setPedometerStatusUpdate] = useState(0); // Pour forcer le re-render
   
   const stepCountRef = useRef(0);
   const roundStartTime = useRef<number>(0);
@@ -69,6 +70,8 @@ export const RoundTracking: React.FC = () => {
   const stepThreshold = useRef(0.5); // Seuil pour détecter un pas
   const lastStepTime = useRef(0);
   const minStepInterval = 300; // Intervalle minimum entre les pas (ms)
+  const lastManualActionTime = useRef(0); // Timestamp de la dernière action manuelle
+  const pedometerDisabledUntil = useRef(0); // Désactiver le podomètre jusqu'à ce timestamp
 
   // Charger les rondes et sites au montage du composant
   useEffect(() => {
@@ -108,6 +111,31 @@ export const RoundTracking: React.FC = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [isRecording, roundData]);
+
+  // Timer pour mettre à jour l'affichage du statut du podomètre
+  useEffect(() => {
+    let statusUpdateInterval: NodeJS.Timeout;
+    
+    if (isRecording && pedometerEnabled && pedometerDisabledUntil.current > 0) {
+      statusUpdateInterval = setInterval(() => {
+        const currentTime = Date.now();
+        if (currentTime >= pedometerDisabledUntil.current) {
+          // Le podomètre est réactivé
+          setPedometerStatusUpdate(currentTime);
+          clearInterval(statusUpdateInterval);
+        } else {
+          // Mettre à jour le compteur
+          setPedometerStatusUpdate(currentTime);
+        }
+      }, 1000); // Mise à jour toutes les secondes
+    }
+    
+    return () => {
+      if (statusUpdateInterval) {
+        clearInterval(statusUpdateInterval);
+      }
+    };
+  }, [isRecording, pedometerEnabled, pedometerStatusUpdate]);
 
   // Fonction pour récupérer les rondes temporaires sauvegardées
   const recoverTemporaryRounds = () => {
@@ -251,11 +279,18 @@ export const RoundTracking: React.FC = () => {
   const handleMotion = (event: any) => {
     if (!isRecording || !pedometerEnabled) return;
 
+    const currentTime = Date.now();
+    
+    // 🚫 PROTECTION RENFORCÉE : Vérifier si le podomètre est temporairement désactivé
+    if (currentTime < pedometerDisabledUntil.current) {
+      console.log(`🚫 Podomètre temporairement désactivé (${Math.round((pedometerDisabledUntil.current - currentTime) / 1000)}s restantes)`);
+      return;
+    }
+
     const acceleration = event.accelerationIncludingGravity;
     if (!acceleration || acceleration.x === null || acceleration.y === null || acceleration.z === null) return;
 
     const { x, y, z } = acceleration;
-    const currentTime = Date.now();
 
     // Calculer la magnitude de l'accélération
     const magnitude = Math.sqrt(x * x + y * y + z * z);
@@ -274,15 +309,12 @@ export const RoundTracking: React.FC = () => {
       if (delta > stepThreshold.current && 
           currentTime - lastStepTime.current > minStepInterval) {
         
-        // ⚠️ PROTECTION : Ne pas ajouter de pas automatique si une action manuelle vient d'être faite
-        // (évite les doublons et interférences)
-        const timeSinceLastManualAction = roundData?.steps.length > 0 
-          ? currentTime - (roundData.steps[roundData.steps.length - 1]?.timestamp || 0)
-          : Infinity;
+        // ⚠️ PROTECTION SUPPLÉMENTAIRE : Vérifier la dernière action manuelle
+        const timeSinceLastManualAction = currentTime - lastManualActionTime.current;
         
-        // Si une action manuelle a été faite il y a moins de 2 secondes, ignorer le pas automatique
-        if (timeSinceLastManualAction < 2000) {
-          console.log('🚫 Pas automatique ignoré - action manuelle récente');
+        // Si une action manuelle a été faite il y a moins de 5 secondes, ignorer le pas automatique
+        if (timeSinceLastManualAction < 5000) {
+          console.log(`🚫 Pas automatique ignoré - action manuelle récente (${Math.round(timeSinceLastManualAction / 1000)}s)`);
           lastAcceleration.current = { x, y, z };
           return;
         }
@@ -333,8 +365,19 @@ export const RoundTracking: React.FC = () => {
     const isStepAction = action === 'Marche' || action === 'Tout droit' || action === 'Reculer' || 
                         action === 'Droite' || action === 'Gauche';
 
-    // Incrémenter le compteur d'étapes pour TOUTES les actions manuelles
+    // 🛡️ PROTECTION : Si c'est une action manuelle, désactiver temporairement le podomètre
     if (isManualAction) {
+      const currentTime = Date.now();
+      lastManualActionTime.current = currentTime;
+      
+      // Désactiver le podomètre pendant 8 secondes après une action manuelle
+      pedometerDisabledUntil.current = currentTime + 8000;
+      
+      console.log(`🛡️ Action manuelle détectée - Podomètre désactivé pendant 8 secondes`);
+      
+      // Forcer le re-render pour mettre à jour l'affichage
+      setPedometerStatusUpdate(currentTime);
+      
       stepCountRef.current += 1;
       setStepCount(stepCountRef.current);
       console.log(`📈 Compteur d'étapes incrémenté: ${stepCountRef.current}`);
@@ -644,6 +687,16 @@ export const RoundTracking: React.FC = () => {
           <span>RoundData: {roundData ? 'OUI' : 'NON'}</span>
           <span>Steps: {roundData?.steps.length || 0}</span>
         </div>
+        {isRecording && pedometerEnabled && (
+          <div className="mt-1 flex justify-between">
+            <span>Podomètre: {Date.now() < pedometerDisabledUntil.current ? '⏸️ DÉSACTIVÉ' : '✅ ACTIF'}</span>
+            {Date.now() < pedometerDisabledUntil.current && (
+              <span className="text-yellow-400">
+                ⏱️ {Math.round((pedometerDisabledUntil.current - Date.now()) / 1000)}s
+              </span>
+            )}
+          </div>
+        )}
         {isRecording && (
           <div className="mt-2">
             <button
@@ -877,7 +930,9 @@ export const RoundTracking: React.FC = () => {
             {pedometerEnabled && (
               <div className="bg-gray-700 rounded px-2 py-1 text-center">
                 <div className="text-sm font-bold text-white">{actualSteps}</div>
-                <div className="text-xs text-gray-400">pas</div>
+                <div className="text-xs text-gray-400">
+                  {Date.now() < pedometerDisabledUntil.current ? '⏸️' : '👟'} pas
+                </div>
               </div>
             )}
           </div>
