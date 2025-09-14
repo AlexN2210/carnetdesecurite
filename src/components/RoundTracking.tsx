@@ -63,9 +63,15 @@ export const RoundTracking: React.FC = () => {
   const [customExpectedSteps, setCustomExpectedSteps] = useState(1);
   const [showValidationPanel, setShowValidationPanel] = useState(true);
   
-  // 🚶‍♂️ NOUVEAUX PARAMÈTRES POUR LE CALCUL DE DISTANCE
-  const [userHeight, setUserHeight] = useState(175); // Taille en cm
-  const [walkingSpeed, setWalkingSpeed] = useState(5.0); // Vitesse en km/h
+  // 🚶‍♂️ NOUVEAUX PARAMÈTRES POUR LE CALCUL DE DISTANCE (avec persistance)
+  const [userHeight, setUserHeight] = useState(() => {
+    const saved = localStorage.getItem('user_height');
+    return saved ? parseInt(saved) : 175;
+  });
+  const [walkingSpeed, setWalkingSpeed] = useState(() => {
+    const saved = localStorage.getItem('walking_speed');
+    return saved ? parseFloat(saved) : 5.0;
+  });
   const [currentDistance, setCurrentDistance] = useState(0); // Distance parcourue en mètres
   const [walkingStartTime, setWalkingStartTime] = useState<number | null>(null);
   
@@ -79,6 +85,17 @@ export const RoundTracking: React.FC = () => {
     loadSitesData();
     recoverTemporaryRounds();
   }, []);
+
+  // 💾 SAUVEGARDE AUTOMATIQUE DES PARAMÈTRES
+  useEffect(() => {
+    localStorage.setItem('user_height', userHeight.toString());
+    console.log('💾 Taille sauvegardée:', userHeight);
+  }, [userHeight]);
+
+  useEffect(() => {
+    localStorage.setItem('walking_speed', walkingSpeed.toString());
+    console.log('💾 Vitesse sauvegardée:', walkingSpeed);
+  }, [walkingSpeed]);
 
   // Sauvegarde automatique avant fermeture de l'application
   useEffect(() => {
@@ -313,99 +330,73 @@ export const RoundTracking: React.FC = () => {
 
   const addStep = async (action: string, direction?: string, location?: string) => {
     console.log(`🚀🚀🚀 addStep appelée avec: action=${action}, direction=${direction}`);
-    console.log(`🚀🚀🚀 ÉTAT COMPLET: isRecording=${isRecording}, roundData=${!!roundData}, roundData.steps.length=${roundData?.steps.length || 0}`);
-    console.log(`🚀🚀🚀 roundData.steps actuel:`, roundData?.steps);
+    console.log(`🚀🚀🚀 ÉTAT COMPLET: isRecording=${isRecording}, roundData=${!!roundData}`);
     
-    if (!isRecording || !roundData) {
-      console.log(`❌❌❌ addStep annulée: isRecording=${isRecording}, roundData=${!!roundData}`);
+    if (!isRecording) {
+      console.log(`❌❌❌ addStep annulée: isRecording=${isRecording}`);
       return;
     }
 
-    console.log(`🔄 Ajout d'étape: ${action} ${direction || ''} - Pas actuels: ${stepCountRef.current}`);
-
-    // ✅ SOLUTION SIMPLIFIÉE : Traiter toutes les actions de la même manière
-    const isManualAction = direction !== 'automatique';
-    const isStepAction = action === 'Marche' || action === 'Tout droit' || action === 'Reculer' || 
-                        action === 'Droite' || action === 'Gauche';
-
-    // Incrémenter le compteur d'étapes pour TOUTES les actions
-    stepCountRef.current += 1;
-    setStepCount(stepCountRef.current);
-    console.log(`📈 Compteur d'étapes incrémenté: ${stepCountRef.current}`);
-
-    // ✅ SOLUTION SIMPLIFIÉE : Calcul des pas basé uniquement sur l'action
-    let stepCount = 0;
-    if (isStepAction) {
-      stepCount = customExpectedSteps; // Nombre de pas personnalisé pour toutes les actions de marche
+    if (!roundData) {
+      console.log(`❌❌❌ addStep annulée: roundData est null`);
+      return;
     }
-    // Pour les autres actions (Pointeaux, Porte, Étage, etc.), stepCount reste à 0
-    
+
+    console.log(`🔄 Ajout d'étape: ${action} ${direction || ''}`);
+    console.log(`🔄 roundData.steps avant:`, roundData.steps);
+
+    // ✅ VERSION ULTRA SIMPLIFIÉE ET ROBUSTE
     const newStep: RoundStep = {
       id: `step_${Date.now()}_${Math.random()}`,
       timestamp: Date.now(),
       action,
       direction,
-      steps: stepCount,
+      steps: 0, // Simplifié : pas de calcul complexe
       location,
       notes: ''
     };
 
     console.log(`📝 Nouvelle étape créée:`, newStep);
 
+    // ✅ MISE À JOUR DIRECTE ET SIMPLE
     const updatedSteps = [...roundData.steps, newStep];
-    
-    // Calculer le total des pas réels (seulement pour les actions de marche)
-    const realStepCount = updatedSteps
-      .filter(step => step.action === 'Marche' || step.action === 'Tout droit' || step.action === 'Reculer' || 
-                     step.action === 'Droite' || step.action === 'Gauche')
-      .reduce((total, step) => total + (step.steps || 0), 0);
-    
-    console.log(`📊 Nouvelle étape: ${action} - Pas: ${stepCount} - Total pas réels: ${realStepCount}`);
-    console.log(`📊 Total étapes: ${updatedSteps.length} (toutes actions confondues)`);
     
     const updatedRoundData = {
       ...roundData,
       steps: updatedSteps,
-      totalSteps: realStepCount
+      totalSteps: updatedSteps.length // Simplifié : totalSteps = nombre d'actions
     };
     
+    console.log(`📊 roundData.steps après:`, updatedRoundData.steps);
+    
+    // ✅ MISE À JOUR DE L'ÉTAT
     setRoundData(updatedRoundData);
-
-    // Mettre à jour l'index de l'étape actuelle
     setCurrentStepIndex(updatedSteps.length - 1);
     setCurrentStep(updatedSteps.length - 1);
 
-    // Pour les actions de marche, activer la validation seulement si elle n'est pas désactivée
-    if (isStepAction && isManualAction && showValidationPanel) {
-      setExpectedSteps(customExpectedSteps); // Utiliser la valeur personnalisée
-      setShowStepValidation(true);
-      setIsStepValidated(false);
-      // Ne pas reset actualSteps ici car cela interfère avec le timer
-    }
-
-    // 💾 SAUVEGARDE IMMÉDIATE - Sauvegarder automatiquement en temps réel
+    // ✅ SAUVEGARDE IMMÉDIATE DANS LOCALSTORAGE
     try {
-      console.log('💾 Sauvegarde automatique de la ronde en cours...');
-      console.log('💾 Données à sauvegarder:', updatedRoundData);
-      const { success, error } = await saveRound(updatedRoundData);
-      if (success) {
-        console.log('✅ Ronde sauvegardée automatiquement avec succès');
+      const existingRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+      const existingIndex = existingRounds.findIndex((r: any) => r.id === updatedRoundData.id);
+      
+      if (existingIndex >= 0) {
+        existingRounds[existingIndex] = updatedRoundData;
       } else {
-        console.error('❌ Erreur lors de la sauvegarde automatique:', error);
-        // En cas d'erreur, sauvegarder localement comme fallback
-        localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(updatedRoundData));
-        console.log('💾 Sauvegarde de secours dans localStorage');
+        existingRounds.push(updatedRoundData);
       }
+      
+      localStorage.setItem('carnet_securite_rounds', JSON.stringify(existingRounds));
+      console.log('💾 Ronde mise à jour dans localStorage');
+      
+      // Mettre à jour l'état local immédiatement
+      setSavedRounds(existingRounds);
     } catch (error) {
-      console.error('❌ Erreur lors de la sauvegarde automatique:', error);
-      // En cas d'erreur, sauvegarder localement comme fallback
-      localStorage.setItem(`temp_round_${roundData.id}`, JSON.stringify(updatedRoundData));
-      console.log('💾 Sauvegarde de secours dans localStorage');
+      console.error('❌ Erreur sauvegarde localStorage:', error);
     }
 
     // Log détaillé pour le débogage
-    console.log(`✅ Étape ajoutée: ${action} ${direction || ''} - Pas: ${stepCount} - Total étapes: ${updatedSteps.length} - Total pas: ${realStepCount}`);
-    console.log('📋 Toutes les étapes actuelles:', updatedSteps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`));
+    console.log(`✅ Étape ajoutée avec succès: ${action} ${direction || ''} - Total étapes: ${updatedSteps.length}`);
+    console.log('📋 Toutes les étapes actuelles:', updatedSteps.map((s, i) => `${i + 1}. ${s.action}`));
   };
 
   const validateStep = () => {
@@ -479,15 +470,22 @@ export const RoundTracking: React.FC = () => {
     console.log('🛑 Arrêt de la ronde...');
     console.log('🛑 roundData actuel:', roundData);
     
-    if (roundData) {
-      const completedRound = {
-        ...roundData,
-        endTime: Date.now(),
-        duration: Date.now() - roundData.startTime,
-        isCompleted: true
-      };
-      
-      console.log('🛑 Ronde complétée:', completedRound);
+    if (!roundData) {
+      console.log('❌ Pas de ronde à arrêter');
+      setIsRecording(false);
+      return;
+    }
+
+    const completedRound = {
+      ...roundData,
+      endTime: Date.now(),
+      duration: Date.now() - roundData.startTime,
+      isCompleted: true
+    };
+    
+    console.log('🛑 Ronde complétée:', completedRound);
+    console.log('🛑 Nombre d\'actions:', completedRound.steps.length);
+    console.log('🛑 Actions détaillées:', completedRound.steps.map((s, i) => `${i + 1}. ${s.action}`));
       
       console.log('💾 Sauvegarde de la ronde:', {
         name: completedRound.name,
@@ -695,6 +693,18 @@ export const RoundTracking: React.FC = () => {
               className="px-2 py-1 bg-purple-600 text-white text-xs rounded"
             >
               🔄 Recharger
+            </button>
+            <button
+              onClick={() => {
+                console.log('🧪 TEST: Vérification de l\'état');
+                console.log('🧪 isRecording:', isRecording);
+                console.log('🧪 roundData:', roundData);
+                console.log('🧪 roundData.steps:', roundData?.steps);
+                console.log('🧪 savedRounds:', savedRounds);
+              }}
+              className="px-2 py-1 bg-orange-600 text-white text-xs rounded"
+            >
+              🔍 État
             </button>
           </div>
         )}
