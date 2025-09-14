@@ -175,6 +175,8 @@ export const RoundTracking: React.FC = () => {
   const addStep = (action: string, direction?: string, location?: string) => {
     if (!isRecording || !roundData) return;
 
+    console.log(`🔄 Ajout d'étape: ${action} ${direction || ''} - Pas actuels: ${stepCountRef.current}`);
+
     // Pour les actions manuelles (boutons), toujours ajouter une étape
     // Pour les actions automatiques (podomètre), ajouter une étape seulement si c'est un vrai pas
     const isManualAction = direction !== 'automatique';
@@ -190,8 +192,15 @@ export const RoundTracking: React.FC = () => {
       setStepCount(stepCountRef.current);
     }
 
-    // Pour les actions de marche, compter les pas réels
-    const stepCount = isStepAction ? (direction === 'automatique' ? 1 : customExpectedSteps) : 0;
+    // Pour les actions de marche, utiliser le nombre de pas personnalisé ou 1 pour automatique
+    let stepCount = 0;
+    if (isStepAction) {
+      if (direction === 'automatique') {
+        stepCount = 1; // Un pas automatique
+      } else {
+        stepCount = customExpectedSteps; // Nombre de pas personnalisé
+      }
+    }
     
     const newStep: RoundStep = {
       id: `step_${Date.now()}_${Math.random()}`,
@@ -211,6 +220,8 @@ export const RoundTracking: React.FC = () => {
                      step.action === 'Droite' || step.action === 'Gauche')
       .reduce((total, step) => total + (step.steps || 0), 0);
     
+    console.log(`📊 Nouvelle étape: ${action} - Pas: ${stepCount} - Total pas réels: ${realStepCount}`);
+    
     setRoundData({
       ...roundData,
       steps: updatedSteps,
@@ -229,8 +240,9 @@ export const RoundTracking: React.FC = () => {
       setActualSteps(0); // Reset des pas actuels
     }
 
-    // Log pour le débogage
-    console.log(`Étape ajoutée: ${action} ${direction || ''} - Total: ${stepCountRef.current} - Index: ${updatedSteps.length - 1}`);
+    // Log détaillé pour le débogage
+    console.log(`✅ Étape ajoutée: ${action} ${direction || ''} - Pas: ${stepCount} - Total étapes: ${updatedSteps.length} - Total pas: ${realStepCount}`);
+    console.log('📋 Toutes les étapes actuelles:', updatedSteps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`));
   };
 
   const validateStep = () => {
@@ -302,21 +314,28 @@ export const RoundTracking: React.FC = () => {
         isCompleted: true
       };
       
+      console.log('💾 Sauvegarde de la ronde:', {
+        name: completedRound.name,
+        totalSteps: completedRound.totalSteps,
+        stepsCount: completedRound.steps.length,
+        steps: completedRound.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`)
+      });
+      
       // Sauvegarder en base de données
       setIsLoading(true);
       try {
         const { success, error } = await saveRound(completedRound);
         if (success) {
-          console.log('Ronde sauvegardée avec succès');
+          console.log('✅ Ronde sauvegardée avec succès');
           // Recharger les rondes depuis la base
           await loadRoundsFromDatabase();
         } else {
-          console.error('Erreur lors de la sauvegarde:', error);
+          console.error('❌ Erreur lors de la sauvegarde:', error);
           // Sauvegarder localement en fallback
           setSavedRounds(prev => [...prev, completedRound]);
         }
       } catch (error) {
-        console.error('Erreur lors de la sauvegarde:', error);
+        console.error('❌ Erreur lors de la sauvegarde:', error);
         // Sauvegarder localement en fallback
         setSavedRounds(prev => [...prev, completedRound]);
       } finally {

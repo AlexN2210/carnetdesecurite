@@ -17,6 +17,7 @@ export const RoundReplay: React.FC<RoundReplayProps> = ({ round, onClose }) => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [showInstructions, setShowInstructions] = useState(true);
+  const [timeRemaining, setTimeRemaining] = useState(0);
 
   const currentStep = round.steps[currentStepIndex];
   const totalSteps = round.steps.length;
@@ -31,20 +32,59 @@ export const RoundReplay: React.FC<RoundReplayProps> = ({ round, onClose }) => {
     steps: round.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`)
   });
 
-  // Auto-play des étapes
+  // Auto-play des étapes avec timing basé sur les pas
   useEffect(() => {
     if (isPlaying && currentStepIndex < totalSteps - 1) {
+      const currentStep = round.steps[currentStepIndex];
+      let delay = 3000; // Délai par défaut
+      
+      // Ajuster le délai selon le type d'action et le nombre de pas
+      if (currentStep) {
+        if (currentStep.action === 'Marche' || currentStep.action === 'Tout droit' || 
+            currentStep.action === 'Droite' || currentStep.action === 'Gauche') {
+          // Pour les actions de marche, calculer le délai basé sur les pas
+          // Estimation: 1 pas = 0.6 seconde (vitesse de marche normale)
+          const stepDelay = Math.max(1000, (currentStep.steps || 1) * 600);
+          delay = Math.min(stepDelay, 8000); // Maximum 8 secondes
+        } else if (currentStep.action === 'Pointeaux') {
+          delay = 5000; // Plus de temps pour pointer
+        } else if (currentStep.action === 'Porte') {
+          delay = 2000; // Moins de temps pour vérifier une porte
+        } else if (currentStep.action === 'Étage') {
+          delay = 4000; // Temps pour changer d'étage
+        }
+      }
+      
+      console.log(`Auto-progression dans ${delay}ms: étape ${currentStepIndex + 1} -> ${currentStepIndex + 2}`);
+      
+      // Démarrer le compte à rebours
+      setTimeRemaining(Math.ceil(delay / 1000));
+      const countdownInterval = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
       const timer = setTimeout(() => {
-        console.log(`Auto-progression: étape ${currentStepIndex + 1} -> ${currentStepIndex + 2}`);
+        clearInterval(countdownInterval);
         nextStep();
-      }, 3000); // 3 secondes par étape pour laisser le temps de lire
-      return () => clearTimeout(timer);
+      }, delay);
+      
+      return () => {
+        clearTimeout(timer);
+        clearInterval(countdownInterval);
+      };
     } else if (isPlaying && currentStepIndex >= totalSteps - 1) {
       console.log('Ronde terminée automatiquement');
       setIsPlaying(false);
       setIsCompleted(true);
+      setTimeRemaining(0);
     }
-  }, [isPlaying, currentStepIndex, totalSteps]);
+  }, [isPlaying, currentStepIndex, totalSteps, round.steps]);
 
   const nextStep = () => {
     if (currentStepIndex < totalSteps - 1) {
@@ -252,6 +292,11 @@ export const RoundReplay: React.FC<RoundReplayProps> = ({ round, onClose }) => {
                 <div className="text-xs text-gray-500">
                   Étape {currentStepIndex + 1}/{totalSteps}
                 </div>
+                {isPlaying && timeRemaining > 0 && (
+                  <div className="text-lg font-bold text-blue-400 mt-2">
+                    ⏱️ {timeRemaining}s
+                  </div>
+                )}
               </div>
             </div>
 
