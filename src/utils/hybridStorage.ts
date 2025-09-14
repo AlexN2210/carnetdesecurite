@@ -309,6 +309,9 @@ export const saveRound = async (roundData: RoundData): Promise<{ success: boolea
 
       // Insérer les étapes de la ronde
       if (roundData.steps.length > 0) {
+        console.log(`💾 Sauvegarde de ${roundData.steps.length} étapes pour la ronde ${roundData.name}`);
+        console.log('📋 Étapes à sauvegarder:', roundData.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`));
+        
         const stepsData = roundData.steps.map((step, index) => ({
           round_id: round.id,
           step_number: index + 1,
@@ -320,15 +323,21 @@ export const saveRound = async (roundData: RoundData): Promise<{ success: boolea
           timestamp: new Date(step.timestamp).toISOString()
         }));
 
+        console.log('📝 Données des étapes à insérer:', stepsData);
+
         const { error: stepsError } = await supabase
           .from('round_steps')
           .insert(stepsData);
 
         if (stepsError) {
-          console.error('Error saving round steps to Supabase:', stepsError);
+          console.error('❌ Erreur sauvegarde étapes Supabase:', stepsError);
           // Fallback vers localStorage
           return saveRoundToLocal(roundData);
+        } else {
+          console.log('✅ Étapes sauvegardées avec succès dans Supabase');
         }
+      } else {
+        console.log('⚠️ Aucune étape à sauvegarder pour cette ronde');
       }
 
       console.log('✅ Ronde sauvegardée dans Supabase');

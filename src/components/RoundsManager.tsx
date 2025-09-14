@@ -129,6 +129,10 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
     ).length;
   };
 
+  const getAllActionsCount = (round: RoundData) => {
+    return round.steps.length;
+  };
+
   const filteredRounds = rounds.filter(round => {
     // Filtre par site
     if (filterSite !== 'all' && round.siteId !== filterSite) {
@@ -325,8 +329,8 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
                     
                     <div className="bg-gray-700 rounded-lg p-3">
                       <Target className="h-4 w-4 text-green-400 mx-auto mb-1" />
-                      <div className="text-sm font-bold text-white">{getWalkActionsCount(round)}</div>
-                      <div className="text-xs text-gray-400">Marches</div>
+                      <div className="text-sm font-bold text-white">{getAllActionsCount(round)}</div>
+                      <div className="text-xs text-gray-400">Toutes Actions</div>
                     </div>
                     
                     <div className="bg-gray-700 rounded-lg p-3">

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Actions de Ronde</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #111827; color: white; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { background: #1f2937; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #3b82f6; }
+        .error { border-left-color: #ef4444; }
+        .success { border-left-color: #10b981; }
+        .warning { border-left-color: #f59e0b; }
+        button { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        .log { background: #000; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; margin: 10px 0; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success-result { background: #065f46; }
+        .error-result { background: #7f1d1d; }
+        .warning-result { background: #92400e; }
+        .info-result { background: #1e40af; }
+        .action-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0; }
+        .action-btn { padding: 15px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; }
+        .action-btn:hover { opacity: 0.8; }
+        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .marche { background: #10b981; }
+        .droite { background: #3b82f6; }
+        .gauche { background: #3b82f6; }
+        .pointeaux { background: #ef4444; }
+        .porte { background: #8b5cf6; }
+        .etage { background: #6366f1; }
+        .position { background: #ec4899; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Actions de Ronde</h1>
+        
+        <div class="section">
+            <h2>1. Test des Actions</h2>
+            <p>Cliquez sur les boutons pour tester l'ajout d'actions :</p>
+            
+            <div class="action-buttons">
+                <button class="action-btn marche" onclick="testAction('Marche', 'forward')">🚶‍♂️ Marche</button>
+                <button class="action-btn droite" onclick="testAction('Droite', 'right')">↪️ Droite</button>
+                <button class="action-btn gauche" onclick="testAction('Gauche', 'left')">↩️ Gauche</button>
+                <button class="action-btn pointeaux" onclick="testAction('Pointeaux')">🎯 Pointeaux</button>
+                <button class="action-btn porte" onclick="testAction('Porte')">🚪 Porte</button>
+                <button class="action-btn etage" onclick="testAction('Étage')">🏢 Étage</button>
+                <button class="action-btn position" onclick="testAction('Position')">📍 Position</button>
+                <button class="action-btn marche" onclick="testAction('Tout droit', 'forward')">⬆️ Tout droit</button>
+            </div>
+            
+            <button onclick="clearLog()">Effacer les logs</button>
+            <button onclick="testAllActions()">Test toutes les actions</button>
+        </div>
+
+        <div class="section">
+            <h2>2. Résultats</h2>
+            <div id="results"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. Logs de débogage</h2>
+            <div id="debug-log" class="log">Prêt pour les tests...\n</div>
+        </div>
+    </div>
+
+    <script>
+        let actions = [];
+        let stepCount = 0;
+
+        const log = (message, type = 'info') => {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                error: '#ef4444',
+                success: '#10b981', 
+                warning: '#f59e0b',
+                info: '#6b7280'
+            };
+            logDiv.innerHTML += `<span style="color: ${colors[type]}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        const addResult = (message, type) => {
+            const element = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}-result`;
+            resultDiv.textContent = message;
+            element.appendChild(resultDiv);
+        };
+
+        const clearResults = () => {
+            document.getElementById('results').innerHTML = '';
+        };
+
+        const clearLog = () => {
+            document.getElementById('debug-log').innerHTML = 'Logs effacés...\n';
+        };
+
+        // Simulation de la fonction addStep
+        const addStep = (action, direction) => {
+            log(`🔄 Ajout d'étape: ${action} ${direction || ''} - Pas actuels: ${stepCount}`);
+
+            // TOUJOURS ajouter une étape pour toutes les actions manuelles
+            const isManualAction = direction !== 'automatique';
+            const isStepAction = action === 'Marche' || action === 'Tout droit' || action === 'Reculer' || 
+                                action === 'Droite' || action === 'Gauche';
+
+            // Incrémenter le compteur d'étapes pour TOUTES les actions manuelles
+            if (isManualAction) {
+                stepCount += 1;
+                log(`📈 Compteur d'étapes incrémenté: ${stepCount}`);
+            }
+
+            // Pour les actions de marche, utiliser 5 pas par défaut
+            // Pour les autres actions, mettre 0 pas
+            let stepCountForAction = 0;
+            if (isStepAction) {
+                stepCountForAction = 5; // Nombre de pas par défaut
+            }
+            // Pour les autres actions (Pointeaux, Porte, Étage, etc.), stepCount reste à 0
+            
+            const newStep = {
+                id: `step_${Date.now()}_${Math.random()}`,
+                timestamp: Date.now(),
+                action,
+                direction,
+                steps: stepCountForAction,
+                location: null,
+                notes: ''
+            };
+
+            log(`📝 Nouvelle étape créée:`, 'info');
+            log(JSON.stringify(newStep, null, 2), 'info');
+
+            actions.push(newStep);
+            
+            // Calculer le total des pas réels (seulement pour les actions de marche)
+            const realStepCount = actions
+                .filter(step => step.action === 'Marche' || step.action === 'Tout droit' || step.action === 'Reculer' || 
+                               step.action === 'Droite' || step.action === 'Gauche')
+                .reduce((total, step) => total + (step.steps || 0), 0);
+            
+            log(`📊 Nouvelle étape: ${action} - Pas: ${stepCountForAction} - Total pas réels: ${realStepCount}`);
+            log(`📊 Total étapes: ${actions.length} (toutes actions confondues)`);
+
+            // Log détaillé pour le débogage
+            log(`✅ Étape ajoutée: ${action} ${direction || ''} - Pas: ${stepCountForAction} - Total étapes: ${actions.length} - Total pas: ${realStepCount}`);
+            log('📋 Toutes les étapes actuelles: ' + actions.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`).join(', '));
+
+            // Mettre à jour l'affichage
+            updateResults();
+        };
+
+        const testAction = (action, direction) => {
+            addStep(action, direction);
+        };
+
+        const testAllActions = () => {
+            clearResults();
+            clearLog();
+            actions = [];
+            stepCount = 0;
+            
+            log('🧪 Test de toutes les actions...');
+            
+            const testActions = [
+                { action: 'Marche', direction: 'forward' },
+                { action: 'Droite', direction: 'right' },
+                { action: 'Pointeaux' },
+                { action: 'Gauche', direction: 'left' },
+                { action: 'Porte' },
+                { action: 'Tout droit', direction: 'forward' },
+                { action: 'Étage' },
+                { action: 'Position' }
+            ];
+
+            testActions.forEach((test, index) => {
+                setTimeout(() => {
+                    addStep(test.action, test.direction);
+                }, index * 1000);
+            });
+        };
+
+        const updateResults = () => {
+            clearResults();
+            
+            addResult(`Total d'actions: ${actions.length}`, 'info');
+            addResult(`Total de pas: ${actions.reduce((total, step) => total + (step.steps || 0), 0)}`, 'info');
+            
+            const actionTypes = {};
+            actions.forEach(step => {
+                actionTypes[step.action] = (actionTypes[step.action] || 0) + 1;
+            });
+            
+            Object.entries(actionTypes).forEach(([action, count]) => {
+                addResult(`${action}: ${count} fois`, 'success');
+            });
+            
+            addResult('Détail des actions:', 'info');
+            actions.forEach((step, index) => {
+                addResult(`${index + 1}. ${step.action} ${step.direction ? `(${step.direction})` : ''} - ${step.steps} pas`, 'info');
+            });
+        };
+
+        // Auto-test au chargement
+        window.addEventListener('load', () => {
+            log('Page de test chargée', 'success');
+        });
+    </script>
+</body>
+</html>

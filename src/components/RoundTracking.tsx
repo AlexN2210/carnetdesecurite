@@ -177,22 +177,24 @@ export const RoundTracking: React.FC = () => {
 
     console.log(`🔄 Ajout d'étape: ${action} ${direction || ''} - Pas actuels: ${stepCountRef.current}`);
 
-    // Pour les actions manuelles (boutons), toujours ajouter une étape
-    // Pour les actions automatiques (podomètre), ajouter une étape seulement si c'est un vrai pas
+    // TOUJOURS ajouter une étape pour toutes les actions manuelles
     const isManualAction = direction !== 'automatique';
     const isStepAction = action === 'Marche' || action === 'Tout droit' || action === 'Reculer' || 
                         action === 'Droite' || action === 'Gauche';
 
-    // Incrémenter le compteur d'étapes pour toutes les actions
+    // Incrémenter le compteur d'étapes pour TOUTES les actions manuelles
     if (isManualAction) {
       stepCountRef.current += 1;
       setStepCount(stepCountRef.current);
+      console.log(`📈 Compteur d'étapes incrémenté: ${stepCountRef.current}`);
     } else if (isStepAction && direction === 'automatique') {
       stepCountRef.current += 1;
       setStepCount(stepCountRef.current);
+      console.log(`📈 Compteur d'étapes incrémenté (auto): ${stepCountRef.current}`);
     }
 
     // Pour les actions de marche, utiliser le nombre de pas personnalisé ou 1 pour automatique
+    // Pour les autres actions, mettre 0 pas
     let stepCount = 0;
     if (isStepAction) {
       if (direction === 'automatique') {
@@ -201,6 +203,7 @@ export const RoundTracking: React.FC = () => {
         stepCount = customExpectedSteps; // Nombre de pas personnalisé
       }
     }
+    // Pour les autres actions (Pointeaux, Porte, Étage, etc.), stepCount reste à 0
     
     const newStep: RoundStep = {
       id: `step_${Date.now()}_${Math.random()}`,
@@ -212,6 +215,8 @@ export const RoundTracking: React.FC = () => {
       notes: ''
     };
 
+    console.log(`📝 Nouvelle étape créée:`, newStep);
+
     const updatedSteps = [...roundData.steps, newStep];
     
     // Calculer le total des pas réels (seulement pour les actions de marche)
@@ -221,6 +226,7 @@ export const RoundTracking: React.FC = () => {
       .reduce((total, step) => total + (step.steps || 0), 0);
     
     console.log(`📊 Nouvelle étape: ${action} - Pas: ${stepCount} - Total pas réels: ${realStepCount}`);
+    console.log(`📊 Total étapes: ${updatedSteps.length} (toutes actions confondues)`);
     
     setRoundData({
       ...roundData,
