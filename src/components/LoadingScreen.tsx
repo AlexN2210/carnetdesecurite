@@ -2,6 +2,7 @@ import React from 'react';
 
 interface LoadingScreenProps {
   message?: string;
+  onEmergencyUnlock?: () => void;
 }
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ 
