@@ -84,25 +84,25 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-xl font-bold text-white">Carnet Sécurité</h1>
             </div>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
               <button
                 onClick={onVisibilityToggle}
-                className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 title={showSensitiveData ? "Masquer les données" : "Afficher les données"}
               >
                 {showSensitiveData ? (
-                  <EyeOff className="h-5 w-5 text-yellow-400" />
+                  <EyeOff className="h-4 w-4 text-yellow-400" />
                 ) : (
-                  <Eye className="h-5 w-5 text-gray-400" />
+                  <Eye className="h-4 w-4 text-gray-400" />
                 )}
               </button>
               
               <button
                 onClick={onLogout}
-                className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 title="Se déconnecter"
               >
-                <LogOut className="h-5 w-5 text-red-400" />
+                <LogOut className="h-4 w-4 text-red-400" />
               </button>
             </div>
           </div>

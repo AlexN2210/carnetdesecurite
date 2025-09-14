@@ -5,7 +5,24 @@ import {
   Play, Pause, Square, RotateCcw,
   Navigation, Footprints, Clock, Map
 } from 'lucide-react';
-import { saveRound, loadRounds, deleteRound, RoundData } from '../utils/roundStorage';
+import { saveRound, loadRounds, deleteRound, RoundData } from '../utils/localStorage';
+
+// Types pour l'accéléromètre
+interface DeviceMotionEvent extends Event {
+  accelerationIncludingGravity: {
+    x: number | null;
+    y: number | null;
+    z: number | null;
+  } | null;
+}
+
+declare global {
+  interface Window {
+    DeviceMotionEvent: {
+      requestPermission?: () => Promise<string>;
+    };
+  }
+}
 
 interface RoundStep {
   id: string;
@@ -17,7 +34,7 @@ interface RoundStep {
   notes?: string;
 }
 
-// Interface RoundData maintenant importée depuis roundStorage
+// Interface RoundData maintenant importée depuis localStorage
 
 export const RoundTracking: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -29,21 +46,87 @@ export const RoundTracking: React.FC = () => {
   const [isReplaying, setIsReplaying] = useState(false);
   const [replayIndex, setReplayIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [pedometerEnabled, setPedometerEnabled] = useState(false);
   
   const stepCountRef = useRef(0);
   const roundStartTime = useRef<number>(0);
+  const lastAcceleration = useRef<{ x: number; y: number; z: number } | null>(null);
+  const stepThreshold = useRef(0.5); // Seuil pour détecter un pas
+  const lastStepTime = useRef(0);
+  const minStepInterval = 300; // Intervalle minimum entre les pas (ms)
 
   // Charger les rondes au montage du composant
   useEffect(() => {
     loadRoundsFromDatabase();
   }, []);
 
-  // Podomètre simple basé sur les clics de boutons
+  // Podomètre basé sur l'accéléromètre
   useEffect(() => {
-    if (isRecording) {
+    if (isRecording && pedometerEnabled) {
       roundStartTime.current = Date.now();
+      startPedometer();
+    } else {
+      stopPedometer();
     }
-  }, [isRecording]);
+    
+    return () => {
+      stopPedometer();
+    };
+  }, [isRecording, pedometerEnabled]);
+
+  const startPedometer = () => {
+    if (typeof window.DeviceMotionEvent !== 'undefined' && window.DeviceMotionEvent.requestPermission) {
+      // iOS 13+ nécessite une permission
+      window.DeviceMotionEvent.requestPermission().then(response => {
+        if (response === 'granted') {
+          window.addEventListener('devicemotion', handleMotion);
+        }
+      });
+    } else {
+      // Android et autres navigateurs
+      window.addEventListener('devicemotion', handleMotion);
+    }
+  };
+
+  const stopPedometer = () => {
+    window.removeEventListener('devicemotion', handleMotion);
+  };
+
+  const handleMotion = (event: any) => {
+    if (!isRecording || !pedometerEnabled) return;
+
+    const acceleration = event.accelerationIncludingGravity;
+    if (!acceleration || acceleration.x === null || acceleration.y === null || acceleration.z === null) return;
+
+    const { x, y, z } = acceleration;
+    const currentTime = Date.now();
+
+    // Calculer la magnitude de l'accélération
+    const magnitude = Math.sqrt(x * x + y * y + z * z);
+    
+    if (lastAcceleration.current) {
+      const lastMagnitude = Math.sqrt(
+        lastAcceleration.current.x * lastAcceleration.current.x +
+        lastAcceleration.current.y * lastAcceleration.current.y +
+        lastAcceleration.current.z * lastAcceleration.current.z
+      );
+      
+      const delta = Math.abs(magnitude - lastMagnitude);
+
+      // Détecter un pas si le changement d'accélération dépasse le seuil
+      // et qu'assez de temps s'est écoulé depuis le dernier pas
+      if (delta > stepThreshold.current && 
+          currentTime - lastStepTime.current > minStepInterval) {
+        addStep('Marche', 'automatique');
+        lastStepTime.current = currentTime;
+        
+        // Log pour le débogage
+        console.log(`Pas détecté automatiquement - Delta: ${delta.toFixed(3)}, Seuil: ${stepThreshold.current}`);
+      }
+    }
+
+    lastAcceleration.current = { x, y, z };
+  };
 
   const loadRoundsFromDatabase = async () => {
     setIsLoading(true);
@@ -64,11 +147,19 @@ export const RoundTracking: React.FC = () => {
   const addStep = (action: string, direction?: string, location?: string) => {
     if (!isRecording || !roundData) return;
 
-    stepCountRef.current += 1;
-    setStepCount(stepCountRef.current);
+    // Pour les actions manuelles (boutons), toujours ajouter un pas
+    // Pour les actions automatiques (podomètre), ajouter un pas seulement si c'est un vrai pas
+    const isManualAction = direction !== 'automatique';
+    const isStepAction = action === 'Marche' || action === 'Tout droit' || action === 'Reculer' || 
+                        action === 'Droite' || action === 'Gauche';
+
+    if (isStepAction) {
+      stepCountRef.current += 1;
+      setStepCount(stepCountRef.current);
+    }
 
     const newStep: RoundStep = {
-      id: `step_${Date.now()}`,
+      id: `step_${Date.now()}_${Math.random()}`,
       timestamp: Date.now(),
       action,
       direction,
@@ -83,6 +174,9 @@ export const RoundTracking: React.FC = () => {
       steps: updatedSteps,
       totalSteps: stepCountRef.current
     });
+
+    // Log pour le débogage
+    console.log(`Pas ajouté: ${action} ${direction || ''} - Total: ${stepCountRef.current}`);
   };
 
   const startRound = () => {
@@ -228,7 +322,7 @@ export const RoundTracking: React.FC = () => {
 
       {/* Contrôles principaux - Mobile first */}
       <div className="p-3 bg-gray-800 border-b border-gray-700 flex-shrink-0">
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 mb-2">
           {!isRecording ? (
             <button
               onClick={startRound}
@@ -263,19 +357,49 @@ export const RoundTracking: React.FC = () => {
             </button>
           )}
         </div>
+        
+        {/* Contrôle du podomètre */}
+        {isRecording && (
+          <div className="flex flex-col items-center space-y-2">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setPedometerEnabled(!pedometerEnabled)}
+                className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                  pedometerEnabled 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
+                }`}
+              >
+                <Footprints className="h-4 w-4 mr-1" />
+                {pedometerEnabled ? 'Podomètre ON' : 'Podomètre OFF'}
+              </button>
+              
+              {/* Indicateur de statut */}
+              <div className={`w-3 h-3 rounded-full ${
+                pedometerEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
+              }`} title={pedometerEnabled ? 'Podomètre actif' : 'Podomètre inactif'} />
+            </div>
+            
+            <div className="text-center">
+              <span className="text-xs text-gray-400">
+                {pedometerEnabled ? 'Détection automatique activée - Bougez le téléphone' : 'Cliquez sur les boutons pour compter manuellement'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Pad de navigation - Optimisé mobile */}
       <div className="flex-1 p-3 overflow-y-auto">
-        <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-3">
           {navigationButtons.map((button, index) => (
             <button
               key={index}
               onClick={() => addStep(button.action, button.direction)}
               disabled={!isRecording}
-              className={`${button.color} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed text-white p-4 rounded-lg transition-all transform active:scale-95 flex flex-col items-center space-y-2 min-h-[70px]`}
+              className={`${button.color} hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2 sm:p-4 rounded-lg transition-all transform active:scale-95 flex flex-col items-center space-y-1 sm:space-y-2 min-h-[50px] sm:min-h-[70px]`}
             >
-              <button.icon className="h-6 w-6" />
+              <button.icon className="h-4 w-4 sm:h-6 sm:w-6" />
               <span className="text-xs font-medium text-center">{button.action}</span>
             </button>
           ))}

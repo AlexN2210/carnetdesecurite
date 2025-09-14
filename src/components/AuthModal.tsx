@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { signIn, signUp } from '../utils/auth';
+import { signIn, signUp } from '../utils/simpleAuth';
 
 interface AuthModalProps {
   onSuccess: () => void;

@@ -6,8 +6,17 @@ const MASTER_PASSWORD_TABLE = 'master_passwords';
 
 // Fonction pour obtenir l'ID utilisateur actuel
 const getCurrentUserId = async (): Promise<string | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id || null;
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) {
+      console.error('Auth error:', error);
+      return null;
+    }
+    return user?.id || null;
+  } catch (error) {
+    console.error('Error getting user:', error);
+    return null;
+  }
 };
 
 export const loadSites = async (): Promise<Site[]> => {

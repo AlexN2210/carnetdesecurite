@@ -8,7 +8,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   message = "Chargement de votre carnet de sécurité..." 
 }) => {
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center relative overflow-hidden">
+    <div className="h-screen bg-gray-900 flex items-center justify-center relative overflow-hidden">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-blue-500 rounded-full blur-3xl animate-pulse"></div>

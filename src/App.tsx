@@ -8,9 +8,9 @@ import { PWADownloadButton } from './components/PWADownloadButton';
 import { RoundTracking } from './components/RoundTracking';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Site, AppState } from './types';
-import { loadSites, saveSites } from './utils/supabaseStorage';
+import { loadSites, saveSites } from './utils/localStorage';
 import { generateId } from './utils/crypto';
-import { getCurrentUser, signOut, onAuthStateChange } from './utils/auth';
+import { getCurrentUser, signOut, onAuthStateChange } from './utils/simpleAuth';
 
 function App() {
   const [state, setState] = useState<AppState>({
@@ -158,8 +158,8 @@ function App() {
   // Écran de connexion
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
+      <div className="h-screen bg-gray-900 flex items-center justify-center p-4 overflow-hidden">
+        <div className="text-center max-w-md w-full">
           <div className="mb-8">
             <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <User className="h-10 w-10 text-white" />
@@ -187,7 +187,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 w-full overflow-x-hidden">
+    <div className="h-screen bg-gray-900 w-full overflow-x-hidden flex flex-col">
       <Header
         isLocked={state.isLocked}
         showSensitiveData={state.showSensitiveData}
@@ -199,7 +199,7 @@ function App() {
         onLogout={handleLogout}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full overflow-x-hidden">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full overflow-x-hidden overflow-y-auto mobile-scroll-container">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <div className="w-full sm:w-auto">
             <h2 className="text-2xl sm:text-3xl font-bold text-white">Sites surveillés</h2>
@@ -212,17 +212,17 @@ function App() {
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
             <button
               onClick={() => setShowRoundTracking(true)}
-              className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg w-full sm:w-auto"
+              className="flex items-center justify-center space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg w-full sm:w-auto text-sm sm:text-base"
             >
-              <Navigation className="h-5 w-5" />
+              <Navigation className="h-4 w-4 sm:h-5 sm:w-5" />
               <span>Suivi de Ronde</span>
             </button>
             
             <button
               onClick={() => setShowSiteForm(true)}
-              className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg w-full sm:w-auto"
+              className="flex items-center justify-center space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg w-full sm:w-auto text-sm sm:text-base"
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
               <span>Nouveau site</span>
             </button>
           </div>
@@ -236,7 +236,7 @@ function App() {
             {!state.searchQuery && (
               <button
                 onClick={() => setShowSiteForm(true)}
-                className="text-blue-400 hover:text-blue-300 transition-colors"
+                className="text-blue-400 hover:text-blue-300 transition-colors text-sm sm:text-base"
               >
                 Ajouter votre premier site
               </button>

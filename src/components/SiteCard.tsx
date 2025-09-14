@@ -85,20 +85,20 @@ export const SiteCard: React.FC<SiteCardProps> = ({
             </div>
           </div>
           
-          <div className="flex space-x-2 sm:ml-4">
+          <div className="flex space-x-1 sm:space-x-2 sm:ml-4">
             <button
               onClick={() => onEdit(site)}
-              className="p-2 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded-lg transition-colors"
               title="Modifier"
             >
-              <Edit className="h-4 w-4" />
+              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
             </button>
             <button
               onClick={() => onDelete(site.id)}
-              className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition-colors"
               title="Supprimer"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
             </button>
           </div>
         </div>
