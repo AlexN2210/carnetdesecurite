@@ -287,14 +287,25 @@ export const RoundTracking: React.FC = () => {
   const loadRoundsFromDatabase = async () => {
     setIsLoading(true);
     try {
+      // 🔍 CHARGER D'ABORD DEPUIS LOCALSTORAGE POUR ASSURER L'AFFICHAGE
+      const localRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+      console.log('📦 Rondes chargées depuis localStorage:', localRounds.length);
+      setSavedRounds(localRounds);
+      
+      // Ensuite essayer de charger depuis Supabase
       const { rounds, error } = await loadRounds();
       if (error) {
-        console.error('Erreur lors du chargement des rondes:', error);
+        console.error('Erreur lors du chargement des rondes depuis Supabase:', error);
+        console.log('📦 Utilisation des rondes localStorage:', localRounds.length);
       } else {
+        console.log('✅ Rondes chargées depuis Supabase:', rounds.length);
         setSavedRounds(rounds);
       }
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
+      // En cas d'erreur, utiliser localStorage
+      const localRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+      setSavedRounds(localRounds);
     } finally {
       setIsLoading(false);
     }
@@ -465,6 +476,9 @@ export const RoundTracking: React.FC = () => {
   };
 
   const stopRound = async () => {
+    console.log('🛑 Arrêt de la ronde...');
+    console.log('🛑 roundData actuel:', roundData);
+    
     if (roundData) {
       const completedRound = {
         ...roundData,
@@ -472,6 +486,8 @@ export const RoundTracking: React.FC = () => {
         duration: Date.now() - roundData.startTime,
         isCompleted: true
       };
+      
+      console.log('🛑 Ronde complétée:', completedRound);
       
       console.log('💾 Sauvegarde de la ronde:', {
         name: completedRound.name,
@@ -483,20 +499,36 @@ export const RoundTracking: React.FC = () => {
       // Sauvegarder en base de données
       setIsLoading(true);
       try {
+        // 💾 SAUVEGARDE IMMÉDIATE DANS LOCALSTORAGE
+        const existingRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+        const existingIndex = existingRounds.findIndex((r: any) => r.id === completedRound.id);
+        
+        if (existingIndex >= 0) {
+          existingRounds[existingIndex] = completedRound;
+        } else {
+          existingRounds.push(completedRound);
+        }
+        
+        localStorage.setItem('carnet_securite_rounds', JSON.stringify(existingRounds));
+        console.log('💾 Ronde sauvegardée dans localStorage');
+        
+        // Mettre à jour l'état local immédiatement
+        setSavedRounds(existingRounds);
+        
+        // Essayer de sauvegarder dans Supabase
         const { success, error } = await saveRound(completedRound);
         if (success) {
-          console.log('✅ Ronde sauvegardée avec succès');
-          // Recharger les rondes depuis la base
-          await loadRoundsFromDatabase();
+          console.log('✅ Ronde sauvegardée avec succès dans Supabase');
         } else {
-          console.error('❌ Erreur lors de la sauvegarde:', error);
-          // Sauvegarder localement en fallback
-          setSavedRounds(prev => [...prev, completedRound]);
+          console.error('❌ Erreur lors de la sauvegarde Supabase:', error);
+          console.log('💾 Mais la ronde est sauvegardée dans localStorage');
         }
+        
+        // Recharger les rondes depuis la base
+        await loadRoundsFromDatabase();
       } catch (error) {
         console.error('❌ Erreur lors de la sauvegarde:', error);
-        // Sauvegarder localement en fallback
-        setSavedRounds(prev => [...prev, completedRound]);
+        // En cas d'erreur totale, au moins on a localStorage
       } finally {
         setIsLoading(false);
       }
@@ -654,6 +686,15 @@ export const RoundTracking: React.FC = () => {
               className="px-2 py-1 bg-green-600 text-white text-xs rounded"
             >
               🧪 Test Gauche
+            </button>
+            <button
+              onClick={() => {
+                console.log('🧪 TEST: Rechargement des rondes');
+                loadRoundsFromDatabase();
+              }}
+              className="px-2 py-1 bg-purple-600 text-white text-xs rounded"
+            >
+              🔄 Recharger
             </button>
           </div>
         )}
