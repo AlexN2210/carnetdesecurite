@@ -6,7 +6,6 @@ import { SiteForm } from './components/SiteForm';
 import { AuthModal } from './components/AuthModal';
 import { PWADownloadButton } from './components/PWADownloadButton';
 import { RoundTracking } from './components/RoundTracking';
-import { TestComponent } from './components/TestComponent';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Site, AppState } from './types';
 import { loadSites, saveSites } from './utils/supabaseStorage';
@@ -277,7 +276,7 @@ function App() {
       )}
 
       {showRoundTracking && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 z-50">
+        <div className="fixed inset-0 z-50 bg-gray-900">
           <div className="h-full flex flex-col">
             <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-800">
               <h2 className="text-lg font-bold text-white">Suivi de Ronde</h2>
@@ -296,7 +295,6 @@ function App() {
       )}
 
       <PWADownloadButton />
-      <TestComponent />
     </div>
   );
 }
