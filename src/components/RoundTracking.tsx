@@ -190,21 +190,31 @@ export const RoundTracking: React.FC = () => {
       setStepCount(stepCountRef.current);
     }
 
+    // Pour les actions de marche, compter les pas réels
+    const stepCount = isStepAction ? (direction === 'automatique' ? 1 : customExpectedSteps) : 0;
+    
     const newStep: RoundStep = {
       id: `step_${Date.now()}_${Math.random()}`,
       timestamp: Date.now(),
       action,
       direction,
-      steps: stepCountRef.current,
+      steps: stepCount,
       location,
       notes: ''
     };
 
     const updatedSteps = [...roundData.steps, newStep];
+    
+    // Calculer le total des pas réels (seulement pour les actions de marche)
+    const realStepCount = updatedSteps
+      .filter(step => step.action === 'Marche' || step.action === 'Tout droit' || step.action === 'Reculer' || 
+                     step.action === 'Droite' || step.action === 'Gauche')
+      .reduce((total, step) => total + (step.steps || 0), 0);
+    
     setRoundData({
       ...roundData,
       steps: updatedSteps,
-      totalSteps: stepCountRef.current
+      totalSteps: realStepCount
     });
 
     // Mettre à jour l'index de l'étape actuelle

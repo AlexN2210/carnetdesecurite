@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   Map, Clock, Footprints, Navigation, Filter, Search, 
   Calendar, Building, Play, Trash2, Edit, Eye,
-  ArrowLeft, Plus, Target
+  ArrowLeft, Plus, Target, RotateCcw
 } from 'lucide-react';
 import { RoundData, Site } from '../types';
 import { loadRounds, deleteRound } from '../utils/hybridStorage';
 import { loadSites } from '../utils/hybridStorage';
 import { GPSReplay } from './GPSReplay';
+import { RoundReplay } from './RoundReplay';
 
 interface RoundsManagerProps {
   onBack: () => void;
@@ -19,6 +20,7 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRound, setSelectedRound] = useState<RoundData | null>(null);
   const [showGPSReplay, setShowGPSReplay] = useState(false);
+  const [showRoundReplay, setShowRoundReplay] = useState(false);
   const [filterSite, setFilterSite] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all');
@@ -67,6 +69,16 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
     setSelectedRound(null);
   };
 
+  const handleStartRoundReplay = (round: RoundData) => {
+    setSelectedRound(round);
+    setShowRoundReplay(true);
+  };
+
+  const handleCloseRoundReplay = () => {
+    setShowRoundReplay(false);
+    setSelectedRound(null);
+  };
+
   const formatDuration = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
@@ -101,6 +113,20 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
     return 'En cours';
   };
 
+  const getRealStepCount = (round: RoundData) => {
+    return round.steps
+      .filter(step => step.action === 'Marche' || step.action === 'Tout droit' || step.action === 'Reculer' || 
+                     step.action === 'Droite' || step.action === 'Gauche')
+      .reduce((total, step) => total + (step.steps || 0), 0);
+  };
+
+  const getWalkActionsCount = (round: RoundData) => {
+    return round.steps.filter(step => 
+      step.action === 'Marche' || step.action === 'Tout droit' || step.action === 'Reculer' || 
+      step.action === 'Droite' || step.action === 'Gauche'
+    ).length;
+  };
+
   const filteredRounds = rounds.filter(round => {
     // Filtre par site
     if (filterSite !== 'all' && round.siteId !== filterSite) {
@@ -129,6 +155,15 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
       <GPSReplay 
         round={selectedRound} 
         onClose={handleCloseGPSReplay} 
+      />
+    );
+  }
+
+  if (showRoundReplay && selectedRound) {
+    return (
+      <RoundReplay 
+        round={selectedRound} 
+        onClose={handleCloseRoundReplay} 
       />
     );
   }
@@ -242,6 +277,14 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
 
                     <div className="flex space-x-1 ml-4">
                       <button
+                        onClick={() => handleStartRoundReplay(round)}
+                        className="p-2 text-blue-400 hover:text-blue-300 hover:bg-gray-700 rounded-lg transition-colors"
+                        title="Rejouer la ronde étape par étape"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+                      
+                      <button
                         onClick={() => handleStartGPSReplay(round)}
                         className="p-2 text-green-400 hover:text-green-300 hover:bg-gray-700 rounded-lg transition-colors"
                         title="Rejouer en mode GPS"
@@ -260,17 +303,23 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
                   </div>
 
                   {/* Statistiques */}
-                  <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="grid grid-cols-4 gap-3 text-center">
                     <div className="bg-gray-700 rounded-lg p-3">
                       <Navigation className="h-4 w-4 text-blue-400 mx-auto mb-1" />
-                      <div className="text-sm font-bold text-white">{round.totalSteps}</div>
-                      <div className="text-xs text-gray-400">Étapes</div>
+                      <div className="text-sm font-bold text-white">{round.steps.length}</div>
+                      <div className="text-xs text-gray-400">Actions</div>
                     </div>
                     
                     <div className="bg-gray-700 rounded-lg p-3">
                       <Target className="h-4 w-4 text-green-400 mx-auto mb-1" />
-                      <div className="text-sm font-bold text-white">{round.steps.length}</div>
-                      <div className="text-xs text-gray-400">Actions</div>
+                      <div className="text-sm font-bold text-white">{getWalkActionsCount(round)}</div>
+                      <div className="text-xs text-gray-400">Marches</div>
+                    </div>
+                    
+                    <div className="bg-gray-700 rounded-lg p-3">
+                      <Footprints className="h-4 w-4 text-yellow-400 mx-auto mb-1" />
+                      <div className="text-sm font-bold text-white">{getRealStepCount(round)}</div>
+                      <div className="text-xs text-gray-400">Pas réels</div>
                     </div>
                     
                     <div className="bg-gray-700 rounded-lg p-3">
@@ -281,6 +330,45 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
                       <div className="text-xs text-gray-400">Durée</div>
                     </div>
                   </div>
+
+                  {/* Détail des actions */}
+                  {round.steps.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-700">
+                      <h4 className="text-sm font-semibold text-white mb-2 flex items-center">
+                        <Target className="h-4 w-4 mr-1" />
+                        Actions détaillées ({round.steps.length})
+                      </h4>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {round.steps.map((step, index) => {
+                          const isWalkAction = step.action === 'Marche' || step.action === 'Tout droit' || 
+                                             step.action === 'Reculer' || step.action === 'Droite' || step.action === 'Gauche';
+                          return (
+                            <div key={step.id} className={`flex items-center justify-between text-xs rounded px-2 py-1 ${
+                              isWalkAction ? 'bg-green-900/30 border-l-2 border-green-500' : 'bg-gray-700'
+                            }`}>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-gray-400">#{index + 1}</span>
+                                <span className={`font-medium ${isWalkAction ? 'text-green-400' : 'text-blue-400'}`}>
+                                  {step.action}
+                                </span>
+                                {step.direction && (
+                                  <span className="text-gray-500">- {step.direction}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2 text-gray-400">
+                                {isWalkAction && step.steps > 0 && (
+                                  <span className="text-yellow-400 font-bold">{step.steps} pas</span>
+                                )}
+                                <span className="text-gray-500">
+                                  {new Date(step.timestamp).toLocaleTimeString()}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Dates */}
                   <div className="mt-3 pt-3 border-t border-gray-700 text-xs text-gray-500">
