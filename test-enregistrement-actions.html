@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Enregistrement Actions</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #2a2a2a; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Enregistrement des Actions</h1>
+    
+    <div class="test-section">
+        <h2>📋 Test 1: Vérification localStorage</h2>
+        <button onclick="testLocalStorage()">Tester localStorage</button>
+        <button onclick="clearLocalStorage()">Vider localStorage</button>
+        <div id="localStorage-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 Test 2: Simulation d'ajout d'action</h2>
+        <button onclick="simulateAddStep()">Simuler ajout d'action</button>
+        <button onclick="simulateStartRound()">Simuler démarrage ronde</button>
+        <button onclick="simulateStopRound()">Simuler arrêt ronde</button>
+        <div id="simulation-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 Test 3: Vérification des données sauvegardées</h2>
+        <button onclick="checkSavedRounds()">Vérifier rondes sauvegardées</button>
+        <div id="saved-rounds-log" class="log"></div>
+    </div>
+
+    <script>
+        let testRoundData = null;
+        let isRecording = false;
+
+        function log(elementId, message, type = 'info') {
+            const logElement = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            logElement.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function testLocalStorage() {
+            log('localStorage-log', '🧪 Test localStorage...', 'info');
+            
+            try {
+                // Tester l'accès au localStorage
+                localStorage.setItem('test_key', 'test_value');
+                const value = localStorage.getItem('test_key');
+                
+                if (value === 'test_value') {
+                    log('localStorage-log', '✅ localStorage fonctionne correctement', 'success');
+                    localStorage.removeItem('test_key');
+                } else {
+                    log('localStorage-log', '❌ localStorage ne fonctionne pas', 'error');
+                }
+
+                // Vérifier les rondes existantes
+                const existingRounds = localStorage.getItem('carnet_securite_rounds');
+                log('localStorage-log', `📦 Rondes existantes: ${existingRounds || 'aucune'}`, 'info');
+
+            } catch (error) {
+                log('localStorage-log', `❌ Erreur localStorage: ${error.message}`, 'error');
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem('carnet_securite_rounds');
+            log('localStorage-log', '🗑️ localStorage vidé', 'success');
+        }
+
+        function simulateStartRound() {
+            log('simulation-log', '🚀 Simulation démarrage ronde...', 'info');
+            
+            testRoundData = {
+                id: `test_round_${Date.now()}`,
+                name: `Test Ronde ${new Date().toLocaleString()}`,
+                startTime: Date.now(),
+                steps: [],
+                totalSteps: 0,
+                isCompleted: false
+            };
+            
+            isRecording = true;
+            log('simulation-log', `✅ Ronde créée: ${testRoundData.name}`, 'success');
+            log('simulation-log', `📊 ID: ${testRoundData.id}`, 'info');
+        }
+
+        function simulateAddStep() {
+            if (!isRecording || !testRoundData) {
+                log('simulation-log', '❌ Pas de ronde en cours', 'error');
+                return;
+            }
+
+            log('simulation-log', '➕ Simulation ajout d\'action...', 'info');
+
+            const newStep = {
+                id: `step_${Date.now()}_${Math.random()}`,
+                timestamp: Date.now(),
+                action: 'Droite',
+                direction: 'right',
+                steps: 15,
+                distance: 45.2,
+                location: '',
+                notes: ''
+            };
+
+            testRoundData.steps.push(newStep);
+            testRoundData.totalSteps = testRoundData.steps.length;
+
+            log('simulation-log', `✅ Action ajoutée: ${newStep.action} (${newStep.steps} pas, ${newStep.distance}m)`, 'success');
+            log('simulation-log', `📊 Total actions: ${testRoundData.steps.length}`, 'info');
+
+            // Sauvegarder dans localStorage
+            try {
+                const existingRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+                const existingIndex = existingRounds.findIndex(r => r.id === testRoundData.id);
+                
+                if (existingIndex >= 0) {
+                    existingRounds[existingIndex] = testRoundData;
+                } else {
+                    existingRounds.push(testRoundData);
+                }
+                
+                localStorage.setItem('carnet_securite_rounds', JSON.stringify(existingRounds));
+                log('simulation-log', '💾 Ronde sauvegardée dans localStorage', 'success');
+            } catch (error) {
+                log('simulation-log', `❌ Erreur sauvegarde: ${error.message}`, 'error');
+            }
+        }
+
+        function simulateStopRound() {
+            if (!isRecording || !testRoundData) {
+                log('simulation-log', '❌ Pas de ronde en cours', 'error');
+                return;
+            }
+
+            log('simulation-log', '🛑 Simulation arrêt ronde...', 'info');
+
+            testRoundData.endTime = Date.now();
+            testRoundData.duration = testRoundData.endTime - testRoundData.startTime;
+            testRoundData.isCompleted = true;
+
+            // Sauvegarder la ronde finale
+            try {
+                const existingRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+                const existingIndex = existingRounds.findIndex(r => r.id === testRoundData.id);
+                
+                if (existingIndex >= 0) {
+                    existingRounds[existingIndex] = testRoundData;
+                } else {
+                    existingRounds.push(testRoundData);
+                }
+                
+                localStorage.setItem('carnet_securite_rounds', JSON.stringify(existingRounds));
+                log('simulation-log', '💾 Ronde finale sauvegardée', 'success');
+                log('simulation-log', `📊 Actions totales: ${testRoundData.steps.length}`, 'info');
+                log('simulation-log', `⏱️ Durée: ${Math.round(testRoundData.duration / 1000)}s`, 'info');
+            } catch (error) {
+                log('simulation-log', `❌ Erreur sauvegarde finale: ${error.message}`, 'error');
+            }
+
+            isRecording = false;
+            testRoundData = null;
+        }
+
+        function checkSavedRounds() {
+            log('saved-rounds-log', '🔍 Vérification des rondes sauvegardées...', 'info');
+            
+            try {
+                const savedRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+                log('saved-rounds-log', `📊 Nombre de rondes: ${savedRounds.length}`, 'info');
+                
+                savedRounds.forEach((round, index) => {
+                    log('saved-rounds-log', `\n📋 Ronde ${index + 1}:`, 'info');
+                    log('saved-rounds-log', `  - Nom: ${round.name}`, 'info');
+                    log('saved-rounds-log', `  - ID: ${round.id}`, 'info');
+                    log('saved-rounds-log', `  - Terminée: ${round.isCompleted ? 'Oui' : 'Non'}`, 'info');
+                    log('saved-rounds-log', `  - Actions: ${round.steps ? round.steps.length : 0}`, 'info');
+                    
+                    if (round.steps && round.steps.length > 0) {
+                        log('saved-rounds-log', `  - Détail des actions:`, 'info');
+                        round.steps.forEach((step, stepIndex) => {
+                            log('saved-rounds-log', `    ${stepIndex + 1}. ${step.action} (${step.steps} pas, ${step.distance || 0}m)`, 'info');
+                        });
+                    }
+                });
+                
+                if (savedRounds.length === 0) {
+                    log('saved-rounds-log', '⚠️ Aucune ronde sauvegardée', 'error');
+                }
+                
+            } catch (error) {
+                log('saved-rounds-log', `❌ Erreur lecture: ${error.message}`, 'error');
+            }
+        }
+
+        // Test automatique au chargement
+        window.onload = function() {
+            log('localStorage-log', '🚀 Page de test chargée', 'success');
+            testLocalStorage();
+        };
+    </script>
+</body>
+</html>

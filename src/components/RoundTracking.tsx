@@ -161,6 +161,7 @@ export const RoundTracking: React.FC = () => {
   const addStep = async (action: string, direction?: string) => {
     console.log(`🚀🚀🚀 addStep appelée avec: action=${action}, direction=${direction}`);
     console.log(`🚀🚀🚀 ÉTAT COMPLET: isRecording=${isRecording}, roundData=${!!roundData}`);
+    console.log(`🚀🚀🚀 actualSteps=${actualSteps}, currentDistance=${currentDistance}`);
     
     if (!isRecording) {
       console.log(`❌❌❌ addStep annulée: isRecording=${isRecording}`);
@@ -484,7 +485,7 @@ export const RoundTracking: React.FC = () => {
             </div>
         </div>
 
-                  </div>
+      </div>
 
         {/* Boutons d'actions */}
         {isRecording && (
@@ -493,14 +494,17 @@ export const RoundTracking: React.FC = () => {
               {navigationButtons.map((button, index) => {
                 const IconComponent = button.icon;
                 return (
-                  <button
-                    key={index}
-                    onClick={() => addStep(button.action, button.direction)}
+            <button
+              key={index}
+              onClick={() => {
+                      console.log(`🔘 BOUTON CLIQUÉ: ${button.action} ${button.direction}`);
+                addStep(button.action, button.direction);
+              }}
                     className={`${button.color} hover:opacity-90 text-white p-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200`}
-                  >
+            >
                     <IconComponent className="h-6 w-6" />
                     <span className="font-medium">{button.action}</span>
-                  </button>
+            </button>
                 );
               })}
                   </div>
