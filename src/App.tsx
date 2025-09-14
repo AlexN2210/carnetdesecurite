@@ -8,9 +8,9 @@ import { PWADownloadButton } from './components/PWADownloadButton';
 import { RoundTracking } from './components/RoundTracking';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Site, AppState } from './types';
-import { loadSites, saveSites } from './utils/localStorage';
+import { loadSites, saveSites } from './utils/hybridStorage';
 import { generateId } from './utils/crypto';
-import { getCurrentUser, signOut, onAuthStateChange } from './utils/simpleAuth';
+import { getCurrentUser, signOut, onAuthStateChange } from './utils/hybridAuth';
 
 function App() {
   const [state, setState] = useState<AppState>({

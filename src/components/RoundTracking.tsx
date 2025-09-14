@@ -5,7 +5,7 @@ import {
   Play, Pause, Square, RotateCcw,
   Navigation, Footprints, Clock, Map
 } from 'lucide-react';
-import { saveRound, loadRounds, deleteRound, RoundData } from '../utils/localStorage';
+import { saveRound, loadRounds, deleteRound, RoundData } from '../utils/hybridStorage';
 
 // Types pour l'accéléromètre
 interface DeviceMotionEvent extends Event {
