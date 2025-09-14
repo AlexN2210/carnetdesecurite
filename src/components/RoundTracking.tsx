@@ -26,7 +26,7 @@ export const RoundTracking: React.FC = () => {
   const [walkingSpeed, setWalkingSpeed] = useState(1.4);
   const [currentDistance, setCurrentDistance] = useState(0);
   const [actualSteps, setActualSteps] = useState(0);
-
+  
   const stepCountRef = useRef(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -54,26 +54,22 @@ export const RoundTracking: React.FC = () => {
 
   // Charger les sites
   useEffect(() => {
-    const loadSitesData = async () => {
-      try {
-        const sitesData = await loadSites();
+  const loadSitesData = async () => {
+    try {
+      const sitesData = await loadSites();
         setSites(sitesData);
-      } catch (error) {
-        console.error('Erreur lors du chargement des sites:', error);
-      }
-    };
+    } catch (error) {
+      console.error('Erreur lors du chargement des sites:', error);
+    }
+  };
     loadSitesData();
-  }, []);
-
-  // Charger les rondes
-  useEffect(() => {
-    loadRoundsFromDatabase();
   }, []);
 
   const loadRoundsFromDatabase = async () => {
     try {
       // Charger depuis localStorage d'abord pour affichage immédiat
       const localRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
+      console.log('📦 Rondes chargées depuis localStorage:', localRounds.length);
       setSavedRounds(localRounds);
       
       // Essayer de charger depuis Supabase
@@ -84,12 +80,18 @@ export const RoundTracking: React.FC = () => {
           ...round,
           isCompleted: (round as any).isCompleted || false
         }));
+        console.log('✅ Rondes chargées depuis Supabase:', convertedRounds.length);
         setSavedRounds(convertedRounds);
       }
     } catch (error) {
       console.error('Erreur lors du chargement des rondes:', error);
     }
   };
+
+  // Charger les rondes
+  useEffect(() => {
+    loadRoundsFromDatabase();
+  }, []);
 
   const calculateStepLength = () => {
     return userHeight * 0.43; // Formule standard
@@ -232,24 +234,24 @@ export const RoundTracking: React.FC = () => {
       return;
     }
 
-    const completedRound = {
-      ...roundData,
-      endTime: Date.now(),
-      duration: Date.now() - roundData.startTime,
-      isCompleted: true
-    };
+      const completedRound = {
+        ...roundData,
+        endTime: Date.now(),
+        duration: Date.now() - roundData.startTime,
+        isCompleted: true
+      };
     
     console.log('🛑 Ronde complétée:', completedRound);
     console.log('🛑 Nombre d\'actions:', completedRound.steps.length);
     console.log('🛑 Actions détaillées:', completedRound.steps.map((s, i) => `${i + 1}. ${s.action}`));
       
-    console.log('💾 Sauvegarde de la ronde:', {
-      name: completedRound.name,
-      totalSteps: completedRound.totalSteps,
-      stepsCount: completedRound.steps.length,
-      steps: completedRound.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`)
-    });
-    
+      console.log('💾 Sauvegarde de la ronde:', {
+        name: completedRound.name,
+        totalSteps: completedRound.totalSteps,
+        stepsCount: completedRound.steps.length,
+        steps: completedRound.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`)
+      });
+      
     try {
       // Sauvegarde immédiate dans localStorage
       const existingRounds = JSON.parse(localStorage.getItem('carnet_securite_rounds') || '[]');
@@ -267,24 +269,25 @@ export const RoundTracking: React.FC = () => {
       setSavedRounds(existingRounds);
       
       // Essayer de sauvegarder dans Supabase
-      const { success, error } = await saveRound(completedRound);
-      if (success) {
+        const { success, error } = await saveRound(completedRound);
+        if (success) {
         console.log('✅ Ronde sauvegardée avec succès dans Supabase');
-      } else {
+        } else {
         console.error('❌ Erreur lors de la sauvegarde Supabase:', error);
         console.log('💾 Mais la ronde est sauvegardée dans localStorage');
-      }
+        }
       
       await loadRoundsFromDatabase();
-    } catch (error) {
-      console.error('❌ Erreur lors de la sauvegarde:', error);
-    }
+      } catch (error) {
+        console.error('❌ Erreur lors de la sauvegarde:', error);
+      }
       
-    setRoundData(null);
+      setRoundData(null);
     setIsRecording(false);
     stepCountRef.current = 0;
     stopDistanceTimer();
   };
+
 
   const replayRound = (round: RoundData) => {
     setRoundData(round);
@@ -329,21 +332,21 @@ export const RoundTracking: React.FC = () => {
             Suivi de Ronde
           </h2>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowRounds(!showRounds)}
+          <button
+            onClick={() => setShowRounds(!showRounds)}
               className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
-            >
+          >
               Rondes
-            </button>
+          </button>
             {roundData && (
               <div className="text-white text-sm">
                 {roundData.steps.length} actions
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </div>
-
+              </div>
+            </div>
+            
       {/* Contenu principal */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {/* Section de contrôle de la ronde */}
@@ -368,53 +371,53 @@ export const RoundTracking: React.FC = () => {
                 ))}
               </select>
             </div>
-
+            
             {/* Notes de la ronde */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 Notes de la ronde
-              </label>
-              <textarea
-                value={roundNotes}
-                onChange={(e) => setRoundNotes(e.target.value)}
+            </label>
+            <textarea
+              value={roundNotes}
+              onChange={(e) => setRoundNotes(e.target.value)}
                 placeholder="Notes optionnelles..."
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isRecording}
                 rows={2}
-              />
-            </div>
+            />
+          </div>
 
             {/* Contrôles de la ronde */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                {!isRecording ? (
-                  <button
-                    onClick={startRound}
+          <div className="flex items-center space-x-2">
+          {!isRecording ? (
+            <button
+              onClick={startRound}
                     className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-medium"
-                  >
+            >
                     <Play className="h-4 w-4 mr-2" />
-                    Démarrer
-                  </button>
-                ) : (
-                  <button
-                    onClick={stopRound}
+              Démarrer
+            </button>
+          ) : (
+            <button
+              onClick={stopRound}
                     className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium"
                   >
                     <Square className="h-4 w-4 mr-2" />
                     Arrêter
-                  </button>
-                )}
-              </div>
-              
-              {isRecording && (
+            </button>
+          )}
+        </div>
+        
+        {isRecording && (
                 <div className="text-white text-sm">
                   <div className="flex items-center">
                     <div className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></div>
                     Enregistrement en cours
-                  </div>
-                </div>
-              )}
             </div>
+              </div>
+            )}
+          </div>
           </div>
         </div>
 
@@ -454,8 +457,8 @@ export const RoundTracking: React.FC = () => {
               <div className="text-white text-sm">
                 Pas estimés: {actualSteps}
               </div>
-            </div>
-            
+      </div>
+
             <div className="flex items-center space-x-2">
               {!timerEnabled ? (
                 <button
@@ -472,16 +475,16 @@ export const RoundTracking: React.FC = () => {
                   Arrêter Timer
                 </button>
               )}
-              <button
+            <button
                 onClick={resetDistance}
                 className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm"
               >
                 Reset
-              </button>
+            </button>
             </div>
-          </div>
-
         </div>
+
+                  </div>
 
         {/* Boutons d'actions */}
         {isRecording && (
@@ -500,8 +503,8 @@ export const RoundTracking: React.FC = () => {
                   </button>
                 );
               })}
-            </div>
-          </div>
+                  </div>
+                </div>
         )}
 
         {/* Affichage des étapes en cours - Version compacte */}
@@ -520,13 +523,13 @@ export const RoundTracking: React.FC = () => {
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-white">Gestion des Rondes</h2>
-              <button
-                onClick={() => setShowRounds(false)}
+                <button
+                  onClick={() => setShowRounds(false)}
                 className="text-gray-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
+                >
+                  ✕
+                </button>
+              </div>
             
             <div className="space-y-3">
               {savedRounds.length === 0 ? (
