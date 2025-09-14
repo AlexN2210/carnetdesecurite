@@ -22,14 +22,25 @@ export const RoundReplay: React.FC<RoundReplayProps> = ({ round, onClose }) => {
   const totalSteps = round.steps.length;
   const progress = ((currentStepIndex + 1) / totalSteps) * 100;
 
+  // Logs de débogage
+  console.log('RoundReplay initialisé:', {
+    roundName: round.name,
+    totalSteps,
+    currentStepIndex,
+    currentStep: currentStep ? currentStep.action : 'N/A',
+    steps: round.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`)
+  });
+
   // Auto-play des étapes
   useEffect(() => {
     if (isPlaying && currentStepIndex < totalSteps - 1) {
       const timer = setTimeout(() => {
+        console.log(`Auto-progression: étape ${currentStepIndex + 1} -> ${currentStepIndex + 2}`);
         nextStep();
-      }, 2000); // 2 secondes par étape
+      }, 3000); // 3 secondes par étape pour laisser le temps de lire
       return () => clearTimeout(timer);
     } else if (isPlaying && currentStepIndex >= totalSteps - 1) {
+      console.log('Ronde terminée automatiquement');
       setIsPlaying(false);
       setIsCompleted(true);
     }
@@ -37,7 +48,10 @@ export const RoundReplay: React.FC<RoundReplayProps> = ({ round, onClose }) => {
 
   const nextStep = () => {
     if (currentStepIndex < totalSteps - 1) {
+      console.log(`Passage à l'étape suivante: ${currentStepIndex + 1} -> ${currentStepIndex + 2}`);
       setCurrentStepIndex(prev => prev + 1);
+    } else {
+      console.log('Déjà à la dernière étape');
     }
   };
 
@@ -120,28 +134,44 @@ export const RoundReplay: React.FC<RoundReplayProps> = ({ round, onClose }) => {
   const getStepInstructions = (step: any) => {
     const instructions = [];
     
-    if (step.action === 'Marche' || step.action === 'Tout droit' || step.action === 'Reculer' || 
-        step.action === 'Droite' || step.action === 'Gauche') {
-      instructions.push(`Effectuer ${step.steps} pas`);
+    if (step.action === 'Marche' || step.action === 'Tout droit') {
+      instructions.push(`🚶‍♂️ Marchez tout droit sur ${step.steps} pas`);
       if (step.direction) {
-        instructions.push(`Direction: ${step.direction}`);
+        instructions.push(`🧭 Direction: ${step.direction}`);
       }
-    }
-    
-    if (step.action === 'Pointeaux') {
-      instructions.push('Pointer les pointeaux de sécurité');
-    }
-    
-    if (step.action === 'Porte') {
-      instructions.push('Vérifier la porte');
-    }
-    
-    if (step.action === 'Étage') {
-      instructions.push('Changer d\'étage');
-    }
-    
-    if (step.action === 'Position') {
-      instructions.push('Enregistrer la position');
+    } else if (step.action === 'Droite') {
+      instructions.push(`↪️ Tournez à DROITE`);
+      if (step.steps > 0) {
+        instructions.push(`🚶‍♂️ Puis marchez sur ${step.steps} pas`);
+      }
+      if (step.direction) {
+        instructions.push(`🧭 Direction: ${step.direction}`);
+      }
+    } else if (step.action === 'Gauche') {
+      instructions.push(`↩️ Tournez à GAUCHE`);
+      if (step.steps > 0) {
+        instructions.push(`🚶‍♂️ Puis marchez sur ${step.steps} pas`);
+      }
+      if (step.direction) {
+        instructions.push(`🧭 Direction: ${step.direction}`);
+      }
+    } else if (step.action === 'Reculer') {
+      instructions.push(`🔙 Reculez de ${step.steps} pas`);
+      if (step.direction) {
+        instructions.push(`🧭 Direction: ${step.direction}`);
+      }
+    } else if (step.action === 'Pointeaux') {
+      instructions.push('🎯 POINTEZ les pointeaux de sécurité');
+      instructions.push('📍 Vérifiez que tous les pointeaux sont visibles');
+    } else if (step.action === 'Porte') {
+      instructions.push('🚪 Vérifiez la porte');
+      instructions.push('🔒 Contrôlez la fermeture et la sécurité');
+    } else if (step.action === 'Étage') {
+      instructions.push('🏢 Changez d\'étage');
+      instructions.push('📶 Notez votre position');
+    } else if (step.action === 'Position') {
+      instructions.push('📍 Enregistrez votre position actuelle');
+      instructions.push('📝 Notez les observations importantes');
     }
     
     return instructions;
@@ -192,17 +222,24 @@ export const RoundReplay: React.FC<RoundReplayProps> = ({ round, onClose }) => {
       {/* Current Step Display */}
       {currentStep && (
         <div className="p-4 bg-gray-800 border-b border-gray-700 flex-shrink-0">
-          <div className={`rounded-lg p-4 ${getActionColor(currentStep.action)}`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-3">
-                {getActionIcon(currentStep.action)}
+          <div className={`rounded-lg p-6 ${getActionColor(currentStep.action)} border-2 border-current`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-4">
+                <div className="text-4xl">
+                  {getActionIcon(currentStep.action)}
+                </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">
+                  <h3 className="text-2xl font-bold text-white mb-1">
                     {currentStep.action}
                   </h3>
                   {currentStep.direction && (
-                    <p className="text-sm text-gray-300">
-                      Direction: {currentStep.direction}
+                    <p className="text-lg text-gray-300">
+                      🧭 {currentStep.direction}
+                    </p>
+                  )}
+                  {currentStep.steps > 0 && (
+                    <p className="text-lg text-yellow-400 font-bold">
+                      👣 {currentStep.steps} pas
                     </p>
                   )}
                 </div>
@@ -213,23 +250,26 @@ export const RoundReplay: React.FC<RoundReplayProps> = ({ round, onClose }) => {
                   {new Date(currentStep.timestamp).toLocaleTimeString()}
                 </div>
                 <div className="text-xs text-gray-500">
-                  Étape #{currentStep.steps}
+                  Étape {currentStepIndex + 1}/{totalSteps}
                 </div>
               </div>
             </div>
 
-            {/* Instructions */}
+            {/* Instructions GPS-like */}
             {showInstructions && (
-              <div className="mt-3 pt-3 border-t border-gray-600">
-                <h4 className="text-sm font-semibold text-white mb-2">Instructions :</h4>
-                <ul className="space-y-1">
+              <div className="mt-4 pt-4 border-t border-gray-600">
+                <h4 className="text-lg font-bold text-white mb-3 flex items-center">
+                  <Navigation className="h-5 w-5 mr-2" />
+                  Instructions GPS :
+                </h4>
+                <div className="space-y-2">
                   {getStepInstructions(currentStep).map((instruction, index) => (
-                    <li key={index} className="text-sm text-gray-300 flex items-center">
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-400" />
-                      {instruction}
-                    </li>
+                    <div key={index} className="text-lg text-white flex items-start">
+                      <span className="text-2xl mr-3">•</span>
+                      <span>{instruction}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>

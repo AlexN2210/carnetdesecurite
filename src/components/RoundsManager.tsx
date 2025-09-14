@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   Map, Clock, Footprints, Navigation, Filter, Search, 
   Calendar, Building, Play, Trash2, Edit, Eye,
-  ArrowLeft, Plus, Target, RotateCcw
+  ArrowLeft, Plus, Target, RotateCcw, Bug
 } from 'lucide-react';
 import { RoundData, Site } from '../types';
 import { loadRounds, deleteRound } from '../utils/hybridStorage';
 import { loadSites } from '../utils/hybridStorage';
 import { GPSReplay } from './GPSReplay';
 import { RoundReplay } from './RoundReplay';
+import { RoundDebugger } from './RoundDebugger';
 
 interface RoundsManagerProps {
   onBack: () => void;
@@ -21,6 +22,7 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
   const [selectedRound, setSelectedRound] = useState<RoundData | null>(null);
   const [showGPSReplay, setShowGPSReplay] = useState(false);
   const [showRoundReplay, setShowRoundReplay] = useState(false);
+  const [showDebugger, setShowDebugger] = useState(false);
   const [filterSite, setFilterSite] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all');
@@ -293,6 +295,17 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
                       </button>
                       
                       <button
+                        onClick={() => {
+                          setSelectedRound(round);
+                          setShowDebugger(true);
+                        }}
+                        className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-gray-700 rounded-lg transition-colors"
+                        title="Debug de la ronde"
+                      >
+                        <Bug className="h-4 w-4" />
+                      </button>
+                      
+                      <button
                         onClick={() => handleDeleteRound(round.id)}
                         className="p-2 text-red-400 hover:text-red-300 hover:bg-gray-700 rounded-lg transition-colors"
                         title="Supprimer"
@@ -385,6 +398,37 @@ export const RoundsManager: React.FC<RoundsManagerProps> = ({ onBack }) => {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      {showGPSReplay && selectedRound && (
+        <GPSReplay
+          round={selectedRound}
+          onClose={() => {
+            setShowGPSReplay(false);
+            setSelectedRound(null);
+          }}
+        />
+      )}
+
+      {showRoundReplay && selectedRound && (
+        <RoundReplay
+          round={selectedRound}
+          onClose={() => {
+            setShowRoundReplay(false);
+            setSelectedRound(null);
+          }}
+        />
+      )}
+
+      {showDebugger && selectedRound && (
+        <RoundDebugger
+          round={selectedRound}
+          onClose={() => {
+            setShowDebugger(false);
+            setSelectedRound(null);
+          }}
+        />
+      )}
     </div>
   );
 };
