@@ -61,6 +61,7 @@ export const RoundTracking: React.FC = () => {
   const [actualSteps, setActualSteps] = useState(0);
   const [expectedSteps, setExpectedSteps] = useState(0);
   const [customExpectedSteps, setCustomExpectedSteps] = useState(1);
+  const [showValidationPanel, setShowValidationPanel] = useState(true);
   
   const stepCountRef = useRef(0);
   const roundStartTime = useRef<number>(0);
@@ -210,8 +211,8 @@ export const RoundTracking: React.FC = () => {
     setCurrentStepIndex(updatedSteps.length - 1);
     setCurrentStep(updatedSteps.length - 1);
 
-    // Pour les actions de marche, activer la validation
-    if (isStepAction && isManualAction) {
+    // Pour les actions de marche, activer la validation seulement si elle n'est pas désactivée
+    if (isStepAction && isManualAction && showValidationPanel) {
       setExpectedSteps(customExpectedSteps); // Utiliser la valeur personnalisée
       setShowStepValidation(true);
       setIsStepValidated(false);
@@ -419,10 +420,10 @@ export const RoundTracking: React.FC = () => {
         </div>
       </div>
 
-      {/* Affichage de l'étape actuelle - Version compacte */}
+      {/* Affichage de l'étape actuelle - Version ultra compacte */}
       {isRecording && roundData && roundData.steps.length > 0 && (
-        <div className="p-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
-          <div className="bg-gray-700 rounded-lg p-2">
+        <div className="p-1 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+          <div className="bg-gray-700 rounded p-1.5">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-xs font-semibold text-white">
                 Étape {currentStepIndex + 1}/{roundData.steps.length}
@@ -431,7 +432,7 @@ export const RoundTracking: React.FC = () => {
                 <button
                   onClick={goToPreviousStep}
                   disabled={currentStepIndex === 0}
-                  className="p-1 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
+                  className="p-0.5 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
                   title="Étape précédente"
                 >
                   <ArrowLeft className="h-3 w-3" />
@@ -439,7 +440,7 @@ export const RoundTracking: React.FC = () => {
                 <button
                   onClick={goToNextStep}
                   disabled={currentStepIndex >= roundData.steps.length - 1}
-                  className="p-1 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
+                  className="p-0.5 bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
                   title="Étape suivante"
                 >
                   <ArrowRight className="h-3 w-3" />
@@ -447,55 +448,63 @@ export const RoundTracking: React.FC = () => {
               </div>
             </div>
             
-            <div className="text-white text-sm font-medium mb-1">
+            <div className="text-white text-xs font-medium mb-1">
               {roundData.steps[currentStepIndex]?.action}
               {roundData.steps[currentStepIndex]?.direction && 
                 ` - ${roundData.steps[currentStepIndex]?.direction}`
               }
             </div>
             
-            {/* Validation des pas - Version compacte */}
-            {showStepValidation && (
-              <div className="mt-2 pt-2 border-t border-gray-600">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-400">Pas attendus:</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={expectedSteps}
-                    onChange={(e) => setExpectedSteps(parseInt(e.target.value) || 1)}
-                    className="w-12 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 focus:border-blue-500 focus:outline-none text-center text-xs"
-                  />
+            {/* Validation des pas - Version ultra compacte */}
+            {showStepValidation && showValidationPanel && (
+              <div className="mt-1 pt-1 border-t border-gray-600">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-400">Pas: {actualSteps}/{expectedSteps}</span>
+                  <div className="flex items-center space-x-1">
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={expectedSteps}
+                      onChange={(e) => setExpectedSteps(parseInt(e.target.value) || 1)}
+                      className="w-8 px-1 py-0.5 bg-gray-600 text-white rounded border border-gray-500 focus:border-blue-500 focus:outline-none text-center text-xs"
+                    />
+                    {actualSteps >= expectedSteps && (
+                      <button
+                        onClick={validateStep}
+                        className="px-1 py-0.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs transition-colors"
+                        title="Valider l'étape"
+                      >
+                        ✓
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowValidationPanel(false)}
+                      className="px-1 py-0.5 bg-gray-600 hover:bg-gray-500 text-white rounded text-xs transition-colors"
+                      title="Masquer la validation"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-400">Effectués:</span>
-                  <span className={`font-bold ${actualSteps >= expectedSteps ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {actualSteps}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs mb-2">
-                  <span className="text-gray-400">Reste:</span>
-                  <span className={`font-bold ${expectedSteps - actualSteps <= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {Math.max(0, expectedSteps - actualSteps)}
-                  </span>
-                </div>
-                
-                {actualSteps >= expectedSteps && (
-                  <button
-                    onClick={validateStep}
-                    className="w-full px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
-                  >
-                    ✅ Valider
-                  </button>
-                )}
               </div>
             )}
 
-            {/* Informations de l'étape - Version compacte */}
+            {/* Informations de l'étape - Version ultra compacte */}
             <div className="mt-1 pt-1 border-t border-gray-600 text-xs text-gray-400 flex justify-between">
               <span>{new Date(roundData.steps[currentStepIndex]?.timestamp || 0).toLocaleTimeString()}</span>
-              <span>#{roundData.steps[currentStepIndex]?.steps}</span>
+              <div className="flex items-center space-x-2">
+                <span>#{roundData.steps[currentStepIndex]?.steps}</span>
+                {showStepValidation && !showValidationPanel && (
+                  <button
+                    onClick={() => setShowValidationPanel(true)}
+                    className="px-1 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition-colors"
+                    title="Afficher la validation des pas"
+                  >
+                    Pas
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -548,6 +557,19 @@ export const RoundTracking: React.FC = () => {
               className="w-full px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none resize-none text-sm"
               rows={1}
             />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="disableValidation"
+              checked={!showValidationPanel}
+              onChange={(e) => setShowValidationPanel(!e.target.checked)}
+              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <label htmlFor="disableValidation" className="text-xs text-gray-300">
+              Désactiver la validation des pas
+            </label>
           </div>
         </div>
       )}
