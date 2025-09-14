@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simple Actions</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #111827; color: white; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .section { background: #1f2937; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        button { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        .log { background: #000; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; margin: 10px 0; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; background: #065f46; }
+        .action-btn { padding: 15px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; margin: 5px; }
+        .marche { background: #10b981; }
+        .droite { background: #3b82f6; }
+        .pointeaux { background: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Simple Actions</h1>
+        
+        <div class="section">
+            <h2>1. Contrôles</h2>
+            <button onclick="startRound()">🚀 Démarrer</button>
+            <button onclick="stopRound()">⏹️ Arrêter</button>
+            <button onclick="clearAll()">🗑️ Effacer</button>
+        </div>
+
+        <div class="section">
+            <h2>2. Actions</h2>
+            <button class="action-btn marche" onclick="addAction('Marche', 'forward')">🚶‍♂️ Marche</button>
+            <button class="action-btn droite" onclick="addAction('Droite', 'right')">↪️ Droite</button>
+            <button class="action-btn pointeaux" onclick="addAction('Pointeaux')">🎯 Pointeaux</button>
+        </div>
+
+        <div class="section">
+            <h2>3. Résultats</h2>
+            <div id="results"></div>
+        </div>
+
+        <div class="section">
+            <h2>4. Logs</h2>
+            <div id="debug-log" class="log">Prêt...\n</div>
+        </div>
+    </div>
+
+    <script>
+        let isRecording = false;
+        let roundData = null;
+        let actions = [];
+
+        const log = (message) => {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        const addAction = (action, direction) => {
+            log(`🔘 Action: ${action} ${direction || ''}`);
+            
+            if (!isRecording || !roundData) {
+                log(`❌ Annulé: isRecording=${isRecording}, roundData=${!!roundData}`);
+                return;
+            }
+
+            const newStep = {
+                id: `step_${Date.now()}`,
+                action,
+                direction,
+                steps: action === 'Marche' || action === 'Droite' ? 5 : 0,
+                timestamp: Date.now()
+            };
+
+            actions.push(newStep);
+            roundData.steps.push(newStep);
+            
+            log(`✅ Ajouté: ${action} - Total: ${actions.length}`);
+            updateResults();
+        };
+
+        const startRound = () => {
+            log('🚀 Démarrage...');
+            isRecording = true;
+            roundData = { steps: [] };
+            actions = [];
+            log('✅ Démarré');
+            updateResults();
+        };
+
+        const stopRound = () => {
+            log('⏹️ Arrêt...');
+            isRecording = false;
+            log(`📊 Total: ${actions.length} actions`);
+            updateResults();
+        };
+
+        const clearAll = () => {
+            isRecording = false;
+            roundData = null;
+            actions = [];
+            document.getElementById('debug-log').innerHTML = 'Effacé...\n';
+            updateResults();
+        };
+
+        const updateResults = () => {
+            const div = document.getElementById('results');
+            div.innerHTML = `
+                <div class="result">
+                    <strong>État:</strong> ${isRecording ? 'Enregistrement' : 'Arrêté'}<br>
+                    <strong>Actions:</strong> ${actions.length}<br>
+                    <strong>Détail:</strong> ${actions.map(a => a.action).join(', ')}
+                </div>
+            `;
+        };
+
+        // Test automatique
+        setTimeout(() => {
+            log('🧪 Test automatique...');
+            startRound();
+            setTimeout(() => addAction('Marche', 'forward'), 1000);
+            setTimeout(() => addAction('Droite', 'right'), 2000);
+            setTimeout(() => addAction('Pointeaux'), 3000);
+            setTimeout(() => stopRound(), 4000);
+        }, 2000);
+    </script>
+</body>
+</html>

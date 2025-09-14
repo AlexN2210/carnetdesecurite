@@ -173,10 +173,11 @@ export const RoundTracking: React.FC = () => {
   };
 
   const addStep = (action: string, direction?: string, location?: string) => {
-    console.log(`🚀 addStep appelée avec: action=${action}, direction=${direction}, isRecording=${isRecording}, roundData=`, roundData);
+    console.log(`🚀🚀🚀 addStep appelée avec: action=${action}, direction=${direction}, isRecording=${isRecording}, roundData=`, roundData);
+    console.log(`🚀🚀🚀 ÉTAT COMPLET: isRecording=${isRecording}, roundData=${!!roundData}, roundData.steps.length=${roundData?.steps.length || 0}`);
     
     if (!isRecording || !roundData) {
-      console.log(`❌ addStep annulée: isRecording=${isRecording}, roundData=${!!roundData}`);
+      console.log(`❌❌❌ addStep annulée: isRecording=${isRecording}, roundData=${!!roundData}`);
       return;
     }
 
@@ -477,6 +478,19 @@ export const RoundTracking: React.FC = () => {
           <span>RoundData: {roundData ? 'OUI' : 'NON'}</span>
           <span>Steps: {roundData?.steps.length || 0}</span>
         </div>
+        {isRecording && (
+          <div className="mt-2">
+            <button
+              onClick={() => {
+                console.log('🧪 TEST: Ajout d\'une action de test');
+                addStep('TEST', 'test');
+              }}
+              className="px-2 py-1 bg-red-600 text-white text-xs rounded"
+            >
+              🧪 Test Action
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Affichage de l'étape actuelle - Version ultra compacte */}
@@ -711,8 +725,9 @@ export const RoundTracking: React.FC = () => {
             <button
               key={index}
               onClick={() => {
-                console.log(`🔘 Bouton cliqué: ${button.action} ${button.direction || ''}`);
-                console.log(`🔘 isRecording: ${isRecording}, roundData:`, roundData);
+                console.log(`🔘🔘🔘 BOUTON CLIQUÉ: ${button.action} ${button.direction || ''}`);
+                console.log(`🔘🔘🔘 ÉTAT: isRecording=${isRecording}, roundData=${!!roundData}`);
+                console.log(`🔘🔘🔘 roundData.steps.length=${roundData?.steps.length || 0}`);
                 addStep(button.action, button.direction);
               }}
               disabled={!isRecording}
