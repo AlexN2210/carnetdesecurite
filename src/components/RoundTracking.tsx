@@ -60,6 +60,7 @@ export const RoundTracking: React.FC = () => {
   const [showStepValidation, setShowStepValidation] = useState(false);
   const [actualSteps, setActualSteps] = useState(0);
   const [expectedSteps, setExpectedSteps] = useState(0);
+  const [customExpectedSteps, setCustomExpectedSteps] = useState(1);
   
   const stepCountRef = useRef(0);
   const roundStartTime = useRef<number>(0);
@@ -179,13 +180,11 @@ export const RoundTracking: React.FC = () => {
     const isStepAction = action === 'Marche' || action === 'Tout droit' || action === 'Reculer' || 
                         action === 'Droite' || action === 'Gauche';
 
-    // Incrémenter le compteur d'étapes pour toutes les actions (pas seulement la marche)
+    // Incrémenter le compteur d'étapes pour toutes les actions
     if (isManualAction) {
-      // Pour les actions manuelles, incrémenter le compteur d'étapes
       stepCountRef.current += 1;
       setStepCount(stepCountRef.current);
     } else if (isStepAction && direction === 'automatique') {
-      // Pour le podomètre automatique, incrémenter seulement pour les vrais pas
       stepCountRef.current += 1;
       setStepCount(stepCountRef.current);
     }
@@ -207,15 +206,20 @@ export const RoundTracking: React.FC = () => {
       totalSteps: stepCountRef.current
     });
 
-    // Mettre à jour les compteurs pour la validation
+    // Mettre à jour l'index de l'étape actuelle
+    setCurrentStepIndex(updatedSteps.length - 1);
+    setCurrentStep(updatedSteps.length - 1);
+
+    // Pour les actions de marche, activer la validation
     if (isStepAction && isManualAction) {
-      setExpectedSteps(prev => prev + 1);
+      setExpectedSteps(customExpectedSteps); // Utiliser la valeur personnalisée
       setShowStepValidation(true);
       setIsStepValidated(false);
+      setActualSteps(0); // Reset des pas actuels
     }
 
     // Log pour le débogage
-    console.log(`Étape ajoutée: ${action} ${direction || ''} - Total: ${stepCountRef.current}`);
+    console.log(`Étape ajoutée: ${action} ${direction || ''} - Total: ${stepCountRef.current} - Index: ${updatedSteps.length - 1}`);
   };
 
   const validateStep = () => {
@@ -225,25 +229,29 @@ export const RoundTracking: React.FC = () => {
   };
 
   const goToPreviousStep = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(prev => prev - 1);
-      const prevStep = roundData?.steps[currentStepIndex - 1];
+    if (roundData && currentStepIndex > 0) {
+      const newIndex = currentStepIndex - 1;
+      setCurrentStepIndex(newIndex);
+      const prevStep = roundData.steps[newIndex];
       if (prevStep) {
         setStepCount(prevStep.steps);
         stepCountRef.current = prevStep.steps;
-        setCurrentStep(currentStepIndex - 1);
+        setCurrentStep(newIndex);
+        console.log(`Navigation vers étape ${newIndex + 1}: ${prevStep.action}`);
       }
     }
   };
 
   const goToNextStep = () => {
     if (roundData && currentStepIndex < roundData.steps.length - 1) {
-      setCurrentStepIndex(prev => prev + 1);
-      const nextStep = roundData.steps[currentStepIndex + 1];
+      const newIndex = currentStepIndex + 1;
+      setCurrentStepIndex(newIndex);
+      const nextStep = roundData.steps[newIndex];
       if (nextStep) {
         setStepCount(nextStep.steps);
         stepCountRef.current = nextStep.steps;
-        setCurrentStep(currentStepIndex + 1);
+        setCurrentStep(newIndex);
+        console.log(`Navigation vers étape ${newIndex + 1}: ${nextStep.action}`);
       }
     }
   };
@@ -416,7 +424,9 @@ export const RoundTracking: React.FC = () => {
         <div className="p-3 bg-gray-800 border-b border-gray-700 flex-shrink-0">
           <div className="bg-gray-700 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-white">Étape {currentStepIndex + 1}</h3>
+              <h3 className="text-sm font-semibold text-white">
+                Étape {currentStepIndex + 1} sur {roundData.steps.length}
+              </h3>
               <div className="flex space-x-1">
                 <button
                   onClick={goToPreviousStep}
@@ -438,15 +448,30 @@ export const RoundTracking: React.FC = () => {
             </div>
             
             <div className="text-white font-medium mb-2">
-              {roundData.steps[currentStepIndex]?.action}
+              Action: {roundData.steps[currentStepIndex]?.action}
             </div>
+            
+            {roundData.steps[currentStepIndex]?.direction && (
+              <div className="text-gray-300 text-sm mb-2">
+                Direction: {roundData.steps[currentStepIndex]?.direction}
+              </div>
+            )}
             
             {/* Comparaison des pas */}
             {showStepValidation && (
-              <div className="space-y-2">
+              <div className="space-y-2 mt-3 pt-3 border-t border-gray-600">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-400">Pas attendus:</span>
-                  <span className="text-white font-bold">{expectedSteps}</span>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={expectedSteps}
+                      onChange={(e) => setExpectedSteps(parseInt(e.target.value) || 1)}
+                      className="w-16 px-2 py-1 bg-gray-600 text-white rounded border border-gray-500 focus:border-blue-500 focus:outline-none text-center"
+                    />
+                  </div>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-400">Pas effectués:</span>
@@ -466,11 +491,17 @@ export const RoundTracking: React.FC = () => {
                     onClick={validateStep}
                     className="w-full mt-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
                   >
-                    Valider l'étape
+                    ✅ Valider l'étape
                   </button>
                 )}
               </div>
             )}
+
+            {/* Informations de l'étape */}
+            <div className="mt-3 pt-3 border-t border-gray-600 text-xs text-gray-400">
+              <div>Horodatage: {new Date(roundData.steps[currentStepIndex]?.timestamp || 0).toLocaleTimeString()}</div>
+              <div>Étape #{roundData.steps[currentStepIndex]?.steps}</div>
+            </div>
           </div>
         </div>
       )}
@@ -505,6 +536,24 @@ export const RoundTracking: React.FC = () => {
               className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none resize-none"
               rows={2}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Nombre de pas attendus par action de marche
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={customExpectedSteps}
+              onChange={(e) => setCustomExpectedSteps(parseInt(e.target.value) || 1)}
+              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+              placeholder="1"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Nombre de pas à effectuer pour valider chaque action de marche
+            </p>
           </div>
         </div>
       )}

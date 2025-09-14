@@ -214,10 +214,18 @@ function App() {
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
             <button
               onClick={() => setShowRoundTracking(true)}
-              className="flex items-center justify-center space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg w-full sm:w-auto text-sm sm:text-base"
+              className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-3 sm:py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg w-full sm:w-auto text-sm sm:text-base font-medium border-2 border-green-500 hover:border-green-400"
             >
-              <Navigation className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span>Suivi de Ronde</span>
+              <Navigation className="h-5 w-5 sm:h-6 sm:w-6" />
+              <span>🗺️ Suivi de Ronde</span>
+            </button>
+
+            <button
+              onClick={() => setShowRoundsManager(true)}
+              className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-3 sm:py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors shadow-lg w-full sm:w-auto text-sm sm:text-base font-medium border-2 border-purple-500 hover:border-purple-400"
+            >
+              <Map className="h-5 w-5 sm:h-6 sm:w-6" />
+              <span>📋 Gestion des Rondes</span>
             </button>
             
             <button
