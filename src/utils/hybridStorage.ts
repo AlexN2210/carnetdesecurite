@@ -199,6 +199,7 @@ export interface RoundStep {
   action: string;
   direction?: string;
   steps: number;
+  distance?: number;
   location?: string;
   notes?: string;
 }
@@ -251,6 +252,7 @@ export const loadRounds = async (): Promise<{ rounds: RoundData[]; error?: strin
             action: step.action,
             direction: step.direction,
             steps: step.steps_count,
+            distance: step.distance,
             location: step.location,
             notes: step.notes
           }))
@@ -310,7 +312,7 @@ export const saveRound = async (roundData: RoundData): Promise<{ success: boolea
       // Insérer les étapes de la ronde
       if (roundData.steps.length > 0) {
         console.log(`💾 Sauvegarde de ${roundData.steps.length} étapes pour la ronde ${roundData.name}`);
-        console.log('📋 Étapes à sauvegarder:', roundData.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas)`));
+        console.log('📋 Étapes à sauvegarder:', roundData.steps.map((s, i) => `${i + 1}. ${s.action} (${s.steps} pas, ${s.distance || 0}m)`));
         
         const stepsData = roundData.steps.map((step, index) => ({
           round_id: round.id,
@@ -318,6 +320,7 @@ export const saveRound = async (roundData: RoundData): Promise<{ success: boolea
           action: step.action,
           direction: step.direction || null,
           steps_count: step.steps,
+          distance: step.distance || null,
           location: step.location || null,
           notes: step.notes || null,
           timestamp: new Date(step.timestamp).toISOString()
