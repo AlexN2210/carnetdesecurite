@@ -320,7 +320,7 @@ export const saveRound = async (roundData: RoundData): Promise<{ success: boolea
           action: step.action,
           direction: step.direction || null,
           steps_count: step.steps,
-          // distance: step.distance || null, // Temporairement commenté en attendant la migration
+          distance: step.distance || null,
           location: step.location || null,
           notes: step.notes || null,
           timestamp: new Date(step.timestamp).toISOString()

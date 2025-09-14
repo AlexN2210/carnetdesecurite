@@ -259,10 +259,15 @@ export const GPSReplay: React.FC<GPSReplayProps> = ({ round, onClose }) => {
                   <Clock className="h-4 w-4" />
                   <span>{formatTime(currentStep.timestamp)}</span>
                 </div>
-                {(currentStep as any).distance && (
+                {(currentStep as any).distance ? (
                   <div className="flex items-center space-x-1">
                     <Footprints className="h-4 w-4" />
                     <span>{(currentStep as any).distance.toFixed(1)}m</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1 text-gray-400">
+                    <Footprints className="h-4 w-4" />
+                    <span>Distance non disponible</span>
                   </div>
                 )}
               </div>

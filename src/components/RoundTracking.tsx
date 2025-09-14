@@ -549,9 +549,13 @@ export const RoundTracking: React.FC = () => {
                         <div className="text-xs text-gray-400 mt-1">
                           <div>{round.totalSteps} pas • {round.steps.length} actions</div>
                           <div>{round.duration ? formatDuration(round.duration) : 'En cours'}</div>
-                          <div className="text-green-400 font-medium">
-                            📏 Distance: {round.steps.reduce((total, step) => total + ((step as any).distance || 0), 0).toFixed(1)}m
-                          </div>
+                    <div className="text-green-400 font-medium">
+                      📏 Distance: {(() => {
+                        const totalDistance = round.steps.reduce((total, step) => total + ((step as any).distance || 0), 0);
+                        console.log(`🔍 Distance calculée pour ronde ${round.name}:`, totalDistance, 'Étapes:', round.steps.map(s => ({ action: s.action, distance: (s as any).distance })));
+                        return totalDistance.toFixed(1);
+                      })()}m
+                    </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
